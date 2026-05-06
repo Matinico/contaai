@@ -6,17 +6,20 @@ export default async function handler(req, res) {
   const session = await getServerSession(req, res, authOptions);
   if (!session) return res.status(401).json({ error: 'No autorizado' });
 
-  // ── GET /api/facturas?periodo=05/2026&libro=compras ──────────────────────
+  // ── GET /api/facturas ────────────────────────────────────────────────────
   if (req.method === 'GET') {
-    const { periodo, libro } = req.query;
+    const { periodo, libro, cuit_entidad, desde, hasta } = req.query;
 
     let query = supabase
       .from('facturas')
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('fecha', { ascending: true });
 
-    if (periodo) query = query.eq('periodo', periodo);
-    if (libro)   query = query.eq('libro',   libro);
+    if (periodo)      query = query.eq('periodo',      periodo);
+    if (libro)        query = query.eq('libro',        libro);
+    if (cuit_entidad) query = query.eq('cuit_entidad', cuit_entidad);
+    if (desde)        query = query.gte('fecha',       desde);
+    if (hasta)        query = query.lte('fecha',       hasta);
 
     const { data, error } = await query;
     if (error) {
