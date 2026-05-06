@@ -1,5 +1,7 @@
 import Head from 'next/head';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/router';
 
 const CATEGORIES = {
   servicios:    { label: 'Servicios',        alicuota: 21   },
@@ -112,6 +114,13 @@ function exportXLS(compras, ventas, period) {
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') router.replace('/login');
+  }, [status, router]);
+
   const [activeTab, setActiveTab] = useState('compras');
 
   const [comprasEntries, setComprasEntries] = useState([]);
@@ -288,6 +297,15 @@ export default function Home() {
   const isVentasModal = modal?.mode === 'ventas';
   const previewUrl = modal?.file?.type?.startsWith('image/') ? URL.createObjectURL(modal.file) : null;
 
+  // ── Auth guard ────────────────────────────────────────────────────────────
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <div style={{background:'#0a0a0f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{fontFamily:'monospace',color:'#6b6b8a',fontSize:14}}>Cargando…</div>
+      </div>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -335,6 +353,15 @@ export default function Home() {
               style={{padding:'8px 16px',background:'#1a1a26',border:'1px solid #2a2a3d',borderRadius:10,color:'#e8e8f0',fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
               📊 Exportar Excel
             </button>
+            <div style={{display:'flex',alignItems:'center',gap:8,paddingLeft:8,borderLeft:'1px solid #2a2a3d'}}>
+              <span style={{fontSize:12,color:'#6b6b8a',fontFamily:'monospace',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {session?.user?.email}
+              </span>
+              <button onClick={()=>signOut({ callbackUrl:'/login' })}
+                style={{padding:'7px 12px',background:'transparent',border:'1px solid #2a2a3d',borderRadius:9,color:'#6b6b8a',fontFamily:'Syne,sans-serif',fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                Salir
+              </button>
+            </div>
           </div>
         </header>
 
