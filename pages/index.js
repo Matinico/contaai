@@ -808,19 +808,26 @@ export default function Home() {
             </div>
             <div style={{marginBottom:12}}>
               <div style={{fontSize:11,color:'#6b6b8a',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4}}>CUIT</div>
-              <div style={{background:'#0a0a0f',border:'1px solid #2a2a3d',borderRadius:8,padding:'10px 12px',color:'#a0a0c0',fontSize:13,fontFamily:'DM Mono,monospace'}}>{entityModal.cuit}</div>
+              {entityModal.cuit
+                ? <div style={{background:'#0a0a0f',border:'1px solid #2a2a3d',borderRadius:8,padding:'10px 12px',color:'#a0a0c0',fontSize:13,fontFamily:'DM Mono,monospace'}}>{entityModal.cuit}</div>
+                : <div style={{background:'rgba(251,113,133,0.08)',border:'1px solid rgba(251,113,133,0.3)',borderRadius:8,padding:'10px 12px',color:'#f87171',fontSize:12,fontWeight:600}}>⚠️ No se detectó CUIT — mejorá la foto y volvé a intentar</div>
+              }
             </div>
-            <div style={{marginBottom:22}}>
-              <div style={{fontSize:11,color:'#6b6b8a',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4}}>Nombre / Razón social</div>
-              <input
-                value={entityForm.nombre}
-                onChange={e=>setEntityForm(f=>({...f,nombre:e.target.value}))}
-                style={{width:'100%',background:'#0a0a0f',border:'1px solid #3a3a4d',borderRadius:8,padding:'10px 12px',color:'#e8e8f0',fontSize:13,fontFamily:'Syne,sans-serif',outline:'none'}}
-              />
-            </div>
+            {entityModal.cuit && (
+              <div style={{marginBottom:22}}>
+                <div style={{fontSize:11,color:'#6b6b8a',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4}}>Nombre / Razón social</div>
+                <input
+                  value={entityForm.nombre}
+                  onChange={e=>setEntityForm(f=>({...f,nombre:e.target.value}))}
+                  style={{width:'100%',background:'#0a0a0f',border:'1px solid #3a3a4d',borderRadius:8,padding:'10px 12px',color:'#e8e8f0',fontSize:13,fontFamily:'Syne,sans-serif',outline:'none'}}
+                />
+              </div>
+            )}
             <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
               <button onClick={skipEntity} style={{padding:'9px 18px',background:'transparent',color:'#6b6b8a',border:'1px solid #2a2a3d',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer'}}>Omitir</button>
-              <button onClick={confirmEntity} style={{padding:'9px 20px',background:'linear-gradient(135deg,#fbbf24,#f59e0b)',color:'#0a0a0f',border:'none',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,cursor:'pointer'}}>Guardar entidad</button>
+              {entityModal.cuit && (
+                <button onClick={confirmEntity} style={{padding:'9px 20px',background:'linear-gradient(135deg,#fbbf24,#f59e0b)',color:'#0a0a0f',border:'none',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,cursor:'pointer'}}>Guardar entidad</button>
+              )}
             </div>
           </div>
         </div>
