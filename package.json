@@ -10,7 +10,6 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@supabase/supabase-js": "^2.43.4",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^9.4.3",
     "next": "14.2.3",
     "next-auth": "^4.24.7",
     "react": "^18",

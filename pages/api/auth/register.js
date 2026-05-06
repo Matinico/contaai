@@ -18,12 +18,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
   }
 
-  if (findUserByEmail(email)) {
+  const existing = await findUserByEmail(email);
+  if (existing) {
     return res.status(409).json({ error: 'Ya existe una cuenta con ese email' });
   }
 
   const hashed = await bcrypt.hash(password, 12);
-  createUser(email, hashed, name ?? '');
+  await createUser(email, hashed, name ?? '');
 
   return res.status(201).json({ ok: true });
 }
