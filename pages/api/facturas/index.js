@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     const { data, error } = await query;
     if (error) {
-      console.error('Supabase GET error:', error);
+      console.error('[GET /api/facturas] Supabase error:', error);
       return res.status(500).json({ error: error.message });
     }
     return res.status(200).json({ data });
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   // ── POST /api/facturas ───────────────────────────────────────────────────
   if (req.method === 'POST') {
     const body = req.body;
-    console.log('POST /api/facturas body:', JSON.stringify(body));
+    console.log('[POST /api/facturas] body:', JSON.stringify(body));
 
     const { data, error } = await supabase
       .from('facturas')
@@ -38,10 +38,10 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error('Supabase POST error:', error);
-      return res.status(500).json({ error: error.message });
+      console.error('[POST /api/facturas] Supabase error:', JSON.stringify(error));
+      return res.status(500).json({ error: error.message, details: error });
     }
-    console.log('Factura guardada:', data?.id);
+    console.log('[POST /api/facturas] OK, id:', data?.id);
     return res.status(201).json({ data });
   }
 
