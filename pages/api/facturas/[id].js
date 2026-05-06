@@ -14,8 +14,7 @@ export default async function handler(req, res) {
     const { error } = await supabase
       .from('facturas')
       .delete()
-      .eq('id', id)
-      .eq('user_id', userId); // garantiza que solo borra registros propios
+      .eq('id', id);
 
     if (error) {
       console.error('Supabase DELETE error:', error);

@@ -6,8 +6,6 @@ export default async function handler(req, res) {
   const session = await getServerSession(req, res, authOptions);
   if (!session) return res.status(401).json({ error: 'No autorizado' });
 
-  const userId = session.user.id;
-
   // ── GET /api/facturas?periodo=05/2026&libro=compras ──────────────────────
   if (req.method === 'GET') {
     const { periodo, libro } = req.query;
@@ -15,7 +13,6 @@ export default async function handler(req, res) {
     let query = supabase
       .from('facturas')
       .select('*')
-      .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
     if (periodo) query = query.eq('periodo', periodo);
@@ -31,9 +28,12 @@ export default async function handler(req, res) {
 
   // ── POST /api/facturas ───────────────────────────────────────────────────
   if (req.method === 'POST') {
+    const body = req.body;
+    console.log('POST /api/facturas body:', JSON.stringify(body));
+
     const { data, error } = await supabase
       .from('facturas')
-      .insert({ ...req.body, user_id: userId })
+      .insert(body)
       .select()
       .single();
 
@@ -41,6 +41,7 @@ export default async function handler(req, res) {
       console.error('Supabase POST error:', error);
       return res.status(500).json({ error: error.message });
     }
+    console.log('Factura guardada:', data?.id);
     return res.status(201).json({ data });
   }
 
