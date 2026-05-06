@@ -112,6 +112,44 @@ function exportXLS(compras, ventas, period) {
   a.click();
 }
 
+// ── Supabase ↔ frontend mapping ────────────────────────────────────────────
+function entryToDb(entry, libro, periodo) {
+  return {
+    libro,
+    periodo,
+    fecha:     entry.fecha,
+    tipo:      entry.tipo,
+    nro:       entry.nro,
+    proveedor: libro === 'ventas' ? (entry.cliente  ?? '') : (entry.proveedor ?? ''),
+    cuit:      libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit      ?? ''),
+    concepto:  entry.concepto,
+    categoria: entry.categoria,
+    alicuota:  entry.alicuota,
+    neto:      entry.neto,
+    iva:       entry.iva,
+    total:     entry.total,
+  };
+}
+
+function dbToEntry(row) {
+  const base = {
+    id:        row.id,
+    fecha:     row.fecha     ?? '',
+    tipo:      row.tipo      ?? 'B',
+    nro:       row.nro       ?? '',
+    concepto:  row.concepto  ?? '',
+    categoria: row.categoria ?? 'otros',
+    alicuota:  Number(row.alicuota ?? 21),
+    neto:      Number(row.neto  ?? 0),
+    iva:       Number(row.iva   ?? 0),
+    total:     Number(row.total ?? 0),
+    cae:       '',
+  };
+  return row.libro === 'ventas'
+    ? { ...base, cliente: row.proveedor ?? '', cuit_cli: row.cuit ?? '' }
+    : { ...base, proveedor: row.proveedor ?? '', cuit: row.cuit ?? '', cuit_rec: '' };
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 export default function Home() {
   const { data: session, status } = useSession();
@@ -135,15 +173,30 @@ export default function Home() {
   const [ventasFilter,  setVentasFilter]  = useState('all');
   const [ventasSearch,  setVentasSearch]  = useState('');
 
-  const [modal,  setModal]  = useState(null);
-  const [form,   setForm]   = useState({});
-  const [toast,  setToast]  = useState(null);
-  const [period, setPeriod] = useState('05/2026');
+  const [modal,     setModal]     = useState(null);
+  const [form,      setForm]      = useState({});
+  const [toast,     setToast]     = useState(null);
+  const [period,    setPeriod]    = useState('05/2026');
+  const [dbLoading, setDbLoading] = useState(false);
 
   const fileRef    = useRef();
   const resolveRef = useRef(null);
 
   const isCompras = activeTab === 'compras';
+
+  // ── Cargar facturas desde Supabase al cambiar período ────────────────────
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    setDbLoading(true);
+    Promise.all([
+      fetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=compras`).then(r => r.json()),
+      fetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=ventas`).then(r  => r.json()),
+    ]).then(([c, v]) => {
+      setComprasEntries((c.data ?? []).map(dbToEntry));
+      setVentasEntries((v.data  ?? []).map(dbToEntry));
+    }).catch(err => console.error('Error cargando facturas:', err))
+      .finally(() => setDbLoading(false));
+  }, [status, period]);
 
   // ── Derived aliases (tab-aware) ──────────────────────────────────────────
   const entries    = isCompras ? comprasEntries : ventasEntries;
@@ -237,7 +290,20 @@ export default function Home() {
           setForm(buildForm(aiData));
         });
 
-        if (entry) setEntries(e => [...e, entry]);
+        if (entry) {
+          try {
+            const saveRes  = await fetch('/api/facturas', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(entryToDb(entry, mode, period)),
+            });
+            const saveJson = await saveRes.json();
+            if (!saveRes.ok) throw new Error(saveJson.error);
+            setEntries(e => [...e, dbToEntry(saveJson.data)]);
+          } catch (err) {
+            showToast('⚠️', 'Error al guardar en base de datos: ' + err.message, true);
+          }
+        }
         setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'done' } : x));
       } catch (err) {
         console.error(err);
@@ -292,6 +358,13 @@ export default function Home() {
   const cancelModal = () => {
     setModal(null);
     if (resolveRef.current) { resolveRef.current(null); resolveRef.current = null; }
+  };
+
+  const handleDelete = async (id, libro) => {
+    const res = await fetch(`/api/facturas/${id}`, { method: 'DELETE' });
+    if (!res.ok) { showToast('⚠️', 'Error al eliminar', true); return; }
+    if (libro === 'compras') setComprasEntries(x => x.filter(r => r.id !== id));
+    else                     setVentasEntries(x  => x.filter(r => r.id !== id));
   };
 
   const isVentasModal = modal?.mode === 'ventas';
@@ -509,7 +582,11 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {dbLoading ? (
+                    <tr><td colSpan={12} style={{padding:'60px 20px',textAlign:'center',color:'#6b6b8a'}}>
+                      <div style={{fontSize:12,fontFamily:'monospace'}}>Cargando…</div>
+                    </td></tr>
+                  ) : filtered.length === 0 ? (
                     <tr><td colSpan={12} style={{padding:'60px 20px',textAlign:'center',color:'#6b6b8a'}}>
                       <div style={{fontSize:40,marginBottom:12,opacity:0.5}}>🤖</div>
                       <div style={{fontSize:15,fontWeight:700,color:'#e8e8f0',opacity:0.4,marginBottom:6}}>
@@ -553,7 +630,7 @@ export default function Home() {
                       <td style={{padding:'12px 14px',textAlign:'right',fontFamily:'monospace',fontWeight:700}}>$ {fmt(e.total)}</td>
                       <td style={{padding:'12px 14px'}}>
                         <button
-                          onClick={()=>{ isCompras ? setComprasEntries(x=>x.filter(r=>r.id!==e.id)) : setVentasEntries(x=>x.filter(r=>r.id!==e.id)); }}
+                          onClick={()=>handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
                           style={{padding:'4px 8px',background:'transparent',border:'1px solid #2a2a3d',borderRadius:6,color:'#6b6b8a',fontSize:11,cursor:'pointer'}}>✕</button>
                       </td>
                     </tr>
