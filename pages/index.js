@@ -173,14 +173,17 @@ export default function Home() {
   const [ventasFilter,  setVentasFilter]  = useState('all');
   const [ventasSearch,  setVentasSearch]  = useState('');
 
-  const [modal,     setModal]     = useState(null);
-  const [form,      setForm]      = useState({});
-  const [toast,     setToast]     = useState(null);
-  const [period,    setPeriod]    = useState('05/2026');
-  const [dbLoading, setDbLoading] = useState(false);
+  const [modal,       setModal]       = useState(null);
+  const [form,        setForm]        = useState({});
+  const [toast,       setToast]       = useState(null);
+  const [period,      setPeriod]      = useState('05/2026');
+  const [dbLoading,   setDbLoading]   = useState(false);
+  const [entityModal, setEntityModal] = useState(null);
+  const [entityForm,  setEntityForm]  = useState({ nombre: '' });
 
-  const fileRef    = useRef();
-  const resolveRef = useRef(null);
+  const fileRef         = useRef();
+  const resolveRef      = useRef(null);
+  const entityResolveRef = useRef(null);
 
   const isCompras = activeTab === 'compras';
 
@@ -291,11 +294,41 @@ export default function Home() {
         });
 
         if (entry) {
+          const cuit = mode === 'ventas' ? entry.cuit_cli : entry.cuit;
+          let cuit_entidad = cuit || null;
+
+          // Verificar si el CUIT ya existe en entidades
+          if (cuit) {
+            try {
+              const checkRes  = await fetch(`/api/entidades?cuit=${encodeURIComponent(cuit)}`);
+              const checkJson = await checkRes.json();
+              if (!checkJson.data) {
+                // Nuevo — mostrar modal de confirmación
+                const nombre = mode === 'ventas' ? entry.cliente : entry.proveedor;
+                const tipo   = mode === 'ventas' ? 'cliente' : 'proveedor';
+                const confirmed = await new Promise(resolve => {
+                  entityResolveRef.current = resolve;
+                  setEntityModal({ nombre, cuit, tipo });
+                  setEntityForm({ nombre: nombre || '' });
+                });
+                if (confirmed) {
+                  await fetch('/api/entidades', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cuit, nombre: confirmed.nombre, tipo }),
+                  });
+                }
+              }
+            } catch (e) {
+              console.error('Error verificando entidad:', e);
+            }
+          }
+
           try {
             const saveRes  = await fetch('/api/facturas', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(entryToDb(entry, mode, period)),
+              body: JSON.stringify({ ...entryToDb(entry, mode, period), cuit_entidad }),
             });
             const saveJson = await saveRes.json();
             if (!saveRes.ok) throw new Error(saveJson.error);
@@ -358,6 +391,16 @@ export default function Home() {
   const cancelModal = () => {
     setModal(null);
     if (resolveRef.current) { resolveRef.current(null); resolveRef.current = null; }
+  };
+
+  const confirmEntity = () => {
+    setEntityModal(null);
+    if (entityResolveRef.current) { entityResolveRef.current({ nombre: entityForm.nombre }); entityResolveRef.current = null; }
+  };
+
+  const skipEntity = () => {
+    setEntityModal(null);
+    if (entityResolveRef.current) { entityResolveRef.current(null); entityResolveRef.current = null; }
   };
 
   const handleDelete = async (id, libro) => {
@@ -747,6 +790,37 @@ export default function Home() {
             <div style={{padding:'14px 22px',borderTop:'1px solid #2a2a3d',display:'flex',gap:10,justifyContent:'flex-end'}}>
               <button onClick={cancelModal} style={{padding:'10px 20px',background:'transparent',color:'#6b6b8a',border:'1px solid #2a2a3d',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer'}}>Cancelar</button>
               <button onClick={confirmEntry} style={{padding:'10px 24px',background:'linear-gradient(135deg,#6ee7b7,#34d399)',color:'#0a0a0f',border:'none',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,cursor:'pointer'}}>✓ Confirmar y guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL NUEVA ENTIDAD ── */}
+      {entityModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(6px)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:'#12121a',border:'1px solid #2a2a3d',borderRadius:16,padding:28,width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,0.6)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+              <div style={{width:38,height:38,borderRadius:10,background:'rgba(251,191,36,0.12)',border:'1px solid rgba(251,191,36,0.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🏢</div>
+              <div>
+                <div style={{fontWeight:700,fontSize:15,color:'#e8e8f0'}}>Nuevo {entityModal.tipo} detectado</div>
+                <div style={{color:'#6b6b8a',fontSize:12,marginTop:2}}>¿Querés guardarlo en tu listado de entidades?</div>
+              </div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:'#6b6b8a',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4}}>CUIT</div>
+              <div style={{background:'#0a0a0f',border:'1px solid #2a2a3d',borderRadius:8,padding:'10px 12px',color:'#a0a0c0',fontSize:13,fontFamily:'DM Mono,monospace'}}>{entityModal.cuit}</div>
+            </div>
+            <div style={{marginBottom:22}}>
+              <div style={{fontSize:11,color:'#6b6b8a',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:4}}>Nombre / Razón social</div>
+              <input
+                value={entityForm.nombre}
+                onChange={e=>setEntityForm(f=>({...f,nombre:e.target.value}))}
+                style={{width:'100%',background:'#0a0a0f',border:'1px solid #3a3a4d',borderRadius:8,padding:'10px 12px',color:'#e8e8f0',fontSize:13,fontFamily:'Syne,sans-serif',outline:'none'}}
+              />
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={skipEntity} style={{padding:'9px 18px',background:'transparent',color:'#6b6b8a',border:'1px solid #2a2a3d',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer'}}>Omitir</button>
+              <button onClick={confirmEntity} style={{padding:'9px 20px',background:'linear-gradient(135deg,#fbbf24,#f59e0b)',color:'#0a0a0f',border:'none',borderRadius:10,fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,cursor:'pointer'}}>Guardar entidad</button>
             </div>
           </div>
         </div>
