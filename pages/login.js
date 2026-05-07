@@ -52,6 +52,8 @@ export default function Login() {
           options: { data: { name: name.trim() } },
         });
         if (err) { setError(err.message); setLoading(false); return; }
+        // Invalidar cualquier sesión auto-creada — el usuario debe confirmar email antes de entrar
+        await supabase.auth.signOut();
         setMode('verify-email');
         setLoading(false);
         return;
@@ -69,7 +71,12 @@ export default function Login() {
       // login
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
       if (signInErr) {
-        setError('Email o contraseña incorrectos.');
+        const msg = signInErr.message?.toLowerCase() ?? '';
+        if (msg.includes('not confirmed') || signInErr.code === 'email_not_confirmed') {
+          setError('Confirmá tu email antes de ingresar. Revisá tu casilla de correo.');
+        } else {
+          setError('Email o contraseña incorrectos.');
+        }
         setLoading(false);
         return;
       }
