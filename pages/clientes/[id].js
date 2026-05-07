@@ -119,6 +119,8 @@ export default function ClienteDetalle() {
   const [ventasProc,     setVentasProc]     = useState(false);
   const [ventasFilter,   setVentasFilter]   = useState('all');
   const [ventasSearch,   setVentasSearch]   = useState('');
+  const [fechaDesde,     setFechaDesde]     = useState('');
+  const [fechaHasta,     setFechaHasta]     = useState('');
   const [modal,          setModal]          = useState(null);
   const [form,           setForm]           = useState({});
   const [toast,          setToast]          = useState(null);
@@ -173,8 +175,18 @@ export default function ClienteDetalle() {
 
   const filtered = entries.filter(e => {
     const name = isCompras ? e.proveedor : e.cliente;
-    return (!search || name?.toLowerCase().includes(search.toLowerCase()))
-        && (filter === 'all' || String(e.alicuota) === filter);
+    if (search && !name?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filter !== 'all' && String(e.alicuota) !== filter) return false;
+    if (fechaDesde || fechaHasta) {
+      // e.fecha puede ser DD/MM/YYYY o YYYY-MM-DD; normalizamos a YYYY-MM-DD para comparar
+      const parts = e.fecha ? e.fecha.split(/[-/]/) : [];
+      const iso = parts.length === 3
+        ? (parts[0].length === 4 ? e.fecha : `${parts[2]}-${parts[1]}-${parts[0]}`)
+        : '';
+      if (fechaDesde && iso && iso < fechaDesde) return false;
+      if (fechaHasta && iso && iso > fechaHasta) return false;
+    }
+    return true;
   });
 
   const totalNeto     = entries.reduce((s, e) => s + e.neto, 0);
@@ -526,21 +538,44 @@ export default function ClienteDetalle() {
 
                   {/* Table */}
                   <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '5px 10px' }}>
-                          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke={C.muted} strokeWidth="1.3"/><path d="M9.5 9.5l2 2" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
-                          <input placeholder={isCompras ? 'Buscar proveedor…' : 'Buscar cliente…'} value={search} onChange={e => setSearch(e.target.value)}
-                            style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, width: 130 }} />
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Fila 1: búsqueda + alícuotas + contador */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '5px 10px' }}>
+                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke={C.muted} strokeWidth="1.3"/><path d="M9.5 9.5l2 2" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
+                            <input placeholder={isCompras ? 'Buscar proveedor…' : 'Buscar cliente…'} value={search} onChange={e => setSearch(e.target.value)}
+                              style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, width: 130 }} />
+                          </div>
+                          {['all', '21', '10.5', '27'].map(f => (
+                            <button key={f} onClick={() => setFilter(f)}
+                              style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filter === f ? C.navy : C.border}`, background: filter === f ? C.navy : 'transparent', color: filter === f ? 'white' : C.muted, transition: 'all 0.15s' }}>
+                              {f === 'all' ? 'Todos' : f + '%'}
+                            </button>
+                          ))}
                         </div>
-                        {['all', '21', '10.5', '27'].map(f => (
-                          <button key={f} onClick={() => setFilter(f)}
-                            style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filter === f ? C.navy : C.border}`, background: filter === f ? C.navy : 'transparent', color: filter === f ? 'white' : C.muted, transition: 'all 0.15s' }}>
-                            {f === 'all' ? 'Todos' : f + '%'}
-                          </button>
-                        ))}
+                        <span style={{ fontSize: 11, color: C.muted }}>{filtered.length} comprobante{filtered.length !== 1 ? 's' : ''}</span>
                       </div>
-                      <span style={{ fontSize: 11, color: C.muted }}>{filtered.length} comprobante{filtered.length !== 1 ? 's' : ''}</span>
+                      {/* Fila 2: filtro por fecha */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
+                          <span style={{ fontSize: 11, color: C.muted }}>Desde</span>
+                          <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
+                            style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, cursor: 'pointer', fontFamily: C.font }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
+                          <span style={{ fontSize: 11, color: C.muted }}>Hasta</span>
+                          <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
+                            style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, cursor: 'pointer', fontFamily: C.font }} />
+                        </div>
+                        {(fechaDesde || fechaHasta) && (
+                          <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }}
+                            style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.muted }}>
+                            Limpiar
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ overflowX: 'auto' }}>
