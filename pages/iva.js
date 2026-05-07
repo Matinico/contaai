@@ -399,20 +399,6 @@ export default function IvaPage() {
           ))}
         </div>
 
-        {/* ── POSICIÓN IVA ── */}
-        <div style={{...card,padding:'14px 20px',marginBottom:20,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,borderLeft:`4px solid ${posicionIVA>0?C.red:posicionIVA<0?C.green:C.border}`}}>
-          {[
-            {label:'Débito Fiscal (Ventas)',  val:debitoFiscal,       color:'#9333ea'},
-            {label:'Crédito Fiscal (Compras)',val:creditoFiscal,       color:'#047857'},
-            {label:posicionIVA>=0?'Saldo a pagar AFIP':'Saldo a favor',val:Math.abs(posicionIVA),color:posicionIVA>0?C.red:posicionIVA<0?C.green:C.muted},
-          ].map((s,i)=>(
-            <div key={i}>
-              <div style={{fontSize:11,color:C.muted,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:4}}>{s.label}</div>
-              <div style={{fontSize:18,fontWeight:700,color:s.color,fontVariantNumeric:'tabular-nums'}}>$ {fmt(s.val)}</div>
-            </div>
-          ))}
-        </div>
-
         {/* ── MAIN GRID ── */}
         <div style={{display:'grid',gridTemplateColumns:'340px 1fr',gap:20,alignItems:'start'}}>
 
