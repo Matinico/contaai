@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   // ── GET /api/facturas ────────────────────────────────────────────────────
   if (req.method === 'GET') {
-    const { periodo, libro, cuit_entidad, desde, hasta } = req.query;
+    const { periodo, libro, cuit_entidad, desde, hasta, cliente_id } = req.query;
 
     let query = supabase
       .from('facturas')
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
     if (cuit_entidad) query = query.eq('cuit_entidad', cuit_entidad);
     if (desde)        query = query.gte('fecha',       desde);
     if (hasta)        query = query.lte('fecha',       hasta);
+    if (cliente_id)   query = query.eq('cliente_id',   cliente_id);
 
     const { data, error } = await query;
     if (error) {
