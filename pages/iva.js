@@ -133,6 +133,9 @@ export default function IvaPage() {
 
   useEffect(()=>{
     if(status!=='authenticated')return;
+    // Limpiar antes de cargar para que las stats no muestren datos del período anterior
+    setComprasEntries([]);
+    setVentasEntries([]);
     setDbLoading(true);
     Promise.all([
       fetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=compras`).then(r=>r.json()),
