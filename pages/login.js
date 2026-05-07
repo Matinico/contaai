@@ -14,14 +14,16 @@ const C = {
   font:   "system-ui,-apple-system,'Segoe UI',sans-serif",
 };
 
+// modes: login | register | verify-email | email-otp | totp
 export default function Login() {
   const router = useRouter();
 
-  const [mode,        setMode]        = useState('login'); // login | register | totp | verify-email
+  const [mode,        setMode]        = useState('login');
   const [name,        setName]        = useState('');
   const [email,       setEmail]       = useState('');
   const [password,    setPassword]    = useState('');
   const [confirm,     setConfirm]     = useState('');
+  const [emailOtp,    setEmailOtp]    = useState('');
   const [totp,        setTotp]        = useState('');
   const [error,       setError]       = useState('');
   const [loading,     setLoading]     = useState(false);
@@ -30,7 +32,8 @@ export default function Login() {
 
   function switchMode(m) {
     setMode(m); setError('');
-    setName(''); setEmail(''); setPassword(''); setConfirm(''); setTotp('');
+    setName(''); setEmail(''); setPassword(''); setConfirm('');
+    setEmailOtp(''); setTotp('');
   }
 
   const handleSubmit = async e => {
@@ -45,6 +48,8 @@ export default function Login() {
 
     setLoading(true);
     try {
+
+      // ── REGISTRO ────────────────────────────────────────────────────────────
       if (mode === 'register') {
         const { error: err } = await supabase.auth.signUp({
           email,
@@ -52,13 +57,13 @@ export default function Login() {
           options: { data: { name: name.trim() } },
         });
         if (err) { setError(err.message); setLoading(false); return; }
-        // Invalidar cualquier sesión auto-creada — el usuario debe confirmar email antes de entrar
-        await supabase.auth.signOut();
+        await supabase.auth.signOut(); // anular sesión auto-creada; el usuario debe confirmar email
         setMode('verify-email');
         setLoading(false);
         return;
       }
 
+      // ── VERIFICACIÓN TOTP (Google Authenticator) ────────────────────────────
       if (mode === 'totp') {
         const { error: err } = await supabase.auth.mfa.verify({
           factorId, challengeId, code: totp.replace(/\s/g, ''),
@@ -68,7 +73,23 @@ export default function Login() {
         return;
       }
 
-      // login
+      // ── VERIFICACIÓN OTP POR EMAIL ───────────────────────────────────────────
+      if (mode === 'email-otp') {
+        const { error: err } = await supabase.auth.verifyOtp({
+          email,
+          token: emailOtp.replace(/\s/g, ''),
+          type: 'email',
+        });
+        if (err) {
+          setError('Código incorrecto o expirado. Pedí uno nuevo.');
+          setLoading(false);
+          return;
+        }
+        router.replace('/');
+        return;
+      }
+
+      // ── LOGIN ────────────────────────────────────────────────────────────────
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
       if (signInErr) {
         const msg = signInErr.message?.toLowerCase() ?? '';
@@ -81,31 +102,53 @@ export default function Login() {
         return;
       }
 
-      // Check MFA level
-      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aalData?.nextLevel === 'aal2' && aalData?.nextLevel !== aalData?.currentLevel) {
-        const { data: factors } = await supabase.auth.mfa.listFactors();
-        const totpFactor = factors?.totp?.[0];
-        if (totpFactor) {
-          const { data: chal, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
-          if (chalErr) { setError('Error al iniciar verificación 2FA.'); setLoading(false); return; }
-          setFactorId(totpFactor.id);
-          setChallengeId(chal.id);
-          setMode('totp');
-          setLoading(false);
-          return;
-        }
+      // Credenciales correctas — detectar si tiene TOTP activo
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const totpFactor = factorsData?.totp?.find(f => f.status === 'verified');
+
+      if (totpFactor) {
+        // ── Segundo factor: Google Authenticator ──────────────────────────────
+        const { data: chal, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+        if (chalErr) { setError('Error al iniciar verificación 2FA.'); setLoading(false); return; }
+        setFactorId(totpFactor.id);
+        setChallengeId(chal.id);
+        setMode('totp');
+        setLoading(false);
+        return;
       }
 
-      router.replace('/');
+      // ── Segundo factor: OTP por email ─────────────────────────────────────
+      await supabase.auth.signOut(); // limpiar la sesión temporal de signInWithPassword
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false },
+      });
+      if (otpErr) {
+        setError('Error al enviar el código. Intentá de nuevo.');
+        setLoading(false);
+        return;
+      }
+      setMode('email-otp');
+      setLoading(false);
+
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
       setLoading(false);
     }
   };
 
+  const resendOtp = async () => {
+    setError('');
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (err) setError('Error al reenviar el código.');
+  };
+
   const isLogin = mode === 'login';
 
+  // ── Pantalla: verificar email post-registro ────────────────────────────────
   if (mode === 'verify-email') {
     return (
       <>
@@ -133,7 +176,13 @@ export default function Login() {
 
   return (
     <>
-      <Head><title>CIA — {mode === 'totp' ? 'Verificación 2FA' : isLogin ? 'Iniciar sesión' : 'Crear cuenta'}</title></Head>
+      <Head>
+        <title>CIA — {
+          mode === 'email-otp' ? 'Verificación por email' :
+          mode === 'totp'      ? 'Verificación 2FA' :
+          isLogin              ? 'Iniciar sesión' : 'Crear cuenta'
+        }</title>
+      </Head>
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box;}
         body{background:${C.bg};font-family:${C.font};min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -163,16 +212,26 @@ export default function Login() {
         {/* Card */}
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 16, padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.07)' }}>
 
-          {mode === 'totp' ? (
+          {/* ── OTP por email ── */}
+          {mode === 'email-otp' && (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ textAlign: 'center', marginBottom: 4 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>Verificación de dos pasos</div>
-                <div style={{ fontSize: 13, color: C.muted }}>Ingresá el código de tu app de autenticación</div>
+                <div style={{ width: 48, height: 48, background: C.navyLt, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="5" width="20" height="14" rx="2" stroke={C.navy} strokeWidth="1.6"/>
+                    <path d="M2 7l10 7 10-7" stroke={C.navy} strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>Verificación por email</div>
+                <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
+                  Te enviamos un código a<br /><strong style={{ color: C.text }}>{email}</strong>
+                </div>
               </div>
               <div>
-                <label style={lbl}>Código TOTP <span style={{ color: C.red }}>*</span></label>
-                <input className="inp" value={totp} onChange={e => setTotp(e.target.value)}
-                  placeholder="123 456" maxLength={7} autoFocus />
+                <label style={lbl}>Código de 6 dígitos <span style={{ color: C.red }}>*</span></label>
+                <input className="inp" value={emailOtp} onChange={e => setEmailOtp(e.target.value)}
+                  placeholder="123456" maxLength={6} autoFocus
+                  style={{ textAlign: 'center', fontSize: 22, letterSpacing: '0.25em', fontWeight: 700 }} />
               </div>
               {error && (
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
@@ -180,10 +239,50 @@ export default function Login() {
                 </div>
               )}
               <button type="submit" disabled={loading} style={{ marginTop: 4, width: '100%', padding: '12px', background: loading ? '#94a3b8' : C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
-                {loading ? 'Verificando…' : 'Verificar'}
+                {loading ? 'Verificando…' : 'Verificar y entrar'}
+              </button>
+              <div style={{ textAlign: 'center', fontSize: 12, color: C.muted }}>
+                ¿No llegó?{' '}
+                <button type="button" onClick={resendOtp} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.navy, fontWeight: 600, fontSize: 12, padding: 0 }}>
+                  Reenviar código
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ── TOTP (Google Authenticator) ── */}
+          {mode === 'totp' && (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ textAlign: 'center', marginBottom: 4 }}>
+                <div style={{ width: 48, height: 48, background: C.navyLt, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="5" y="2" width="14" height="20" rx="2" stroke={C.navy} strokeWidth="1.6"/>
+                    <circle cx="12" cy="17" r="1.5" fill={C.navy}/>
+                    <path d="M9 6h6" stroke={C.navy} strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>Verificación con app</div>
+                <div style={{ fontSize: 13, color: C.muted }}>Ingresá el código de Google Authenticator o Authy</div>
+              </div>
+              <div>
+                <label style={lbl}>Código TOTP <span style={{ color: C.red }}>*</span></label>
+                <input className="inp" value={totp} onChange={e => setTotp(e.target.value)}
+                  placeholder="123456" maxLength={6} autoFocus
+                  style={{ textAlign: 'center', fontSize: 22, letterSpacing: '0.25em', fontWeight: 700 }} />
+              </div>
+              {error && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
+                  {error}
+                </div>
+              )}
+              <button type="submit" disabled={loading} style={{ marginTop: 4, width: '100%', padding: '12px', background: loading ? '#94a3b8' : C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? 'Verificando…' : 'Verificar y entrar'}
               </button>
             </form>
-          ) : (
+          )}
+
+          {/* ── Login / Registro ── */}
+          {(mode === 'login' || mode === 'register') && (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {!isLogin && (
@@ -223,7 +322,7 @@ export default function Login() {
           )}
 
           {/* Switch mode */}
-          {mode !== 'totp' && (
+          {(mode === 'login' || mode === 'register') && (
             <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: C.muted }}>
               {isLogin ? (
                 <>¿No tenés cuenta?{' '}
