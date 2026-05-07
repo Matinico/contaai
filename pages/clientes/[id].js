@@ -4,6 +4,23 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
+const HERRAMIENTAS = [
+  {
+    key: 'iva',
+    title: 'Liquidación de IVA',
+    desc: 'Registrá comprobantes de compras y ventas, calculá la posición IVA y exportá el Libro.',
+    href: '/iva',
+    icon: (
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+        <rect x="4" y="3" width="15" height="19" rx="2" stroke="#1a3a5c" strokeWidth="1.6"/>
+        <path d="M8 9h7M8 13h5M8 17h6" stroke="#1a3a5c" strokeWidth="1.4" strokeLinecap="round"/>
+        <circle cx="21" cy="21" r="6" fill="#e8f0f7" stroke="#1a3a5c" strokeWidth="1.4"/>
+        <path d="M19 21l1.5 1.5L23 19" stroke="#1a3a5c" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+];
+
 const C = {
   navy:   '#1a3a5c',
   navyLt: '#e8f0f7',
@@ -178,10 +195,24 @@ export default function ClienteDetalle() {
               )}
             </div>
 
-            {/* Placeholder futuro */}
-            <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: 28, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', opacity: 0.65 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Liquidaciones e historial</h2>
-              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>Próximamente: facturas, liquidaciones de IVA, sueldos e IIBB asociadas a este cliente.</p>
+            {/* Herramientas */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Herramientas</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {HERRAMIENTAS.map(h => (
+                <Link key={h.key} href={h.href} style={{ display: 'block', textDecoration: 'none' }}>
+                  <div
+                    style={{ background: C.white, border: `1px solid ${C.navy}`, borderTop: `3px solid ${C.navy}`, borderRadius: 10, padding: '18px 20px', boxShadow: '0 2px 8px rgba(26,58,92,0.08)', display: 'flex', alignItems: 'center', gap: 16, transition: 'box-shadow 0.15s, transform 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(26,58,92,0.15)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(26,58,92,0.08)'; e.currentTarget.style.transform = 'none'; }}>
+                    {h.icon}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: C.navy }}>{h.title}</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{h.desc}</div>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.navy, background: C.navyLt, padding: '5px 12px', borderRadius: 5, whiteSpace: 'nowrap' }}>Acceder →</span>
+                  </div>
+                </Link>
+              ))}
             </div>
           </>
         ) : null}
