@@ -9,28 +9,69 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { cuit, q } = req.query;
 
-    // Búsqueda por texto: GET /api/entidades?q=nombre_o_cuit
+    // ── Búsqueda por texto: GET /api/entidades?q=nombre_o_cuit ──────────────
     if (q !== undefined) {
       const term = q.trim();
-      let query = supabase.from('entidades').select('*').order('nombre').limit(20);
-      if (term) query = query.or(`nombre.ilike.%${term}%,cuit.ilike.%${term}%`);
-      const { data, error } = await query;
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json({ data });
+
+      if (!term) {
+        // Sin término → devolver todas (hasta 50)
+        const { data, error } = await supabase
+          .from('entidades').select('*').order('nombre').limit(50);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ data });
+      }
+
+      // Normalizar: quitar guiones, puntos y espacios para comparar CUITs
+      const norm = term.replace(/[-.\s]/g, '');
+
+      // Tres queries paralelas: por nombre, por cuit tal cual, por cuit normalizado
+      const [rNombre, rCuit, rCuitNorm] = await Promise.all([
+        supabase.from('entidades').select('*').ilike('nombre', `%${term}%`).limit(20),
+        supabase.from('entidades').select('*').ilike('cuit',   `%${term}%`).limit(20),
+        norm !== term
+          ? supabase.from('entidades').select('*').ilike('cuit', `%${norm}%`).limit(20)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      // Loguear errores si los hay
+      if (rNombre.error) console.error('[entidades search] nombre error:', rNombre.error);
+      if (rCuit.error)   console.error('[entidades search] cuit error:',   rCuit.error);
+
+      // Merge y deduplicar por id
+      const seen = new Set();
+      const merged = [
+        ...(rNombre.data ?? []),
+        ...(rCuit.data   ?? []),
+        ...(rCuitNorm.data ?? []),
+      ].filter(e => {
+        if (seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+      }).slice(0, 20);
+
+      return res.status(200).json({ data: merged });
     }
 
-    // Búsqueda exacta por CUIT: GET /api/entidades?cuit=xxx
+    // ── Búsqueda exacta por CUIT: GET /api/entidades?cuit=xxx ──────────────
     if (cuit) {
+      // Intentar con el cuit tal cual, y si no encuentra, con versión normalizada
       const { data, error } = await supabase
         .from('entidades').select('*').eq('cuit', cuit).maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
+
+      if (!data) {
+        const norm = cuit.replace(/[-.\s]/g, '');
+        const { data: d2 } = await supabase
+          .from('entidades').select('*').eq('cuit', norm).maybeSingle();
+        return res.status(200).json({ data: d2 ?? null });
+      }
       return res.status(200).json({ data });
     }
 
     return res.status(400).json({ error: 'Falta cuit o q' });
   }
 
-  // POST /api/entidades  { cuit, nombre, tipo }
+  // ── POST /api/entidades ──────────────────────────────────────────────────
   if (req.method === 'POST') {
     const { cuit, nombre, tipo } = req.body;
     if (!cuit || !nombre) return res.status(400).json({ error: 'Faltan campos' });
@@ -40,7 +81,8 @@ export default async function handler(req, res) {
 
     if (error) {
       if (error.code === '23505') {
-        const { data: existing } = await supabase.from('entidades').select('*').eq('cuit', cuit).single();
+        const { data: existing } = await supabase
+          .from('entidades').select('*').eq('cuit', cuit).maybeSingle();
         return res.status(200).json({ data: existing });
       }
       return res.status(500).json({ error: error.message });
