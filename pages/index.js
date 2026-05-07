@@ -83,6 +83,11 @@ export default function Dashboard() {
 
   async function handleSave() {
     if (!form.nombre.trim()) { setFormError('El nombre del cliente es obligatorio.'); return; }
+    if (!form.descripcion.trim()) { setFormError('La descripción es obligatoria.'); return; }
+    for (let i = 0; i < form.empresas.length; i++) {
+      if (!form.empresas[i].cuit.trim()) { setFormError(`Completá el CUIT de la empresa ${i + 1}.`); return; }
+      if (!form.empresas[i].nombre_empresa.trim()) { setFormError(`Completá la razón social de la empresa ${i + 1}.`); return; }
+    }
     setSaving(true);
     setFormError('');
     try {
@@ -303,10 +308,7 @@ export default function Dashboard() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={lbl}>
-                  Descripción{' '}
-                  <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span>
-                </label>
+                <label style={lbl}>Descripción <span style={{ color: C.red }}>*</span></label>
                 <textarea
                   value={form.descripcion}
                   onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
@@ -318,12 +320,12 @@ export default function Dashboard() {
 
               {/* Empresas */}
               <div>
-                <label style={{ ...lbl, marginBottom: 12 }}>Empresas</label>
+                <label style={{ ...lbl, marginBottom: 12 }}>Empresas <span style={{ color: C.red }}>*</span></label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {form.empresas.map((emp, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                       <div style={{ flex: '0 0 145px' }}>
-                        {i === 0 && <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>CUIT</div>}
+                        {i === 0 && <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>CUIT <span style={{ color: C.red }}>*</span></div>}
                         <input
                           value={emp.cuit}
                           onChange={e => updateEmpresa(i, 'cuit', e.target.value)}
@@ -332,7 +334,7 @@ export default function Dashboard() {
                         />
                       </div>
                       <div style={{ flex: 1 }}>
-                        {i === 0 && <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Razón social</div>}
+                        {i === 0 && <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Razón social <span style={{ color: C.red }}>*</span></div>}
                         <input
                           value={emp.nombre_empresa}
                           onChange={e => updateEmpresa(i, 'nombre_empresa', e.target.value)}
