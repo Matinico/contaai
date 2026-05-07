@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '../../lib/auth-context';
+import { authFetch } from '../../lib/auth-fetch';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
@@ -93,7 +94,7 @@ function dbToEntry(row) {
 }
 
 export default function ClienteDetalle() {
-  const { data: session, status } = useSession();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const { id } = router.query;
   const menuRef = useRef(null);
@@ -129,7 +130,7 @@ export default function ClienteDetalle() {
   const [entityModal,    setEntityModal]    = useState(null);
   const [entityForm,     setEntityForm]     = useState({ nombre: '' });
 
-  useEffect(() => { if (status === 'unauthenticated') router.replace('/login'); }, [status, router]);
+  useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
 
   useEffect(() => {
     const h = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenu(false); };
@@ -139,29 +140,29 @@ export default function ClienteDetalle() {
 
   // Load client info
   useEffect(() => {
-    if (status === 'authenticated' && id) {
-      fetch(`/api/clientes/${id}`)
+    if (user && id) {
+      authFetch(`/api/clientes/${id}`)
         .then(r => r.json())
         .then(data => { if (data.error) setPageError(data.error); else setCliente(data); })
         .catch(() => setPageError('Error de red'))
         .finally(() => setPageLoading(false));
     }
-  }, [status, id]);
+  }, [user, id]);
 
   // Load facturas for this client + period
   useEffect(() => {
-    if (status !== 'authenticated' || !id) return;
+    if (!user || !id) return;
     setComprasEntries([]);
     setVentasEntries([]);
     setDbLoading(true);
     Promise.all([
-      fetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=compras&cliente_id=${id}`).then(r => r.json()),
-      fetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=ventas&cliente_id=${id}`).then(r => r.json()),
+      authFetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=compras&cliente_id=${id}`).then(r => r.json()),
+      authFetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=ventas&cliente_id=${id}`).then(r => r.json()),
     ]).then(([c, v]) => {
       setComprasEntries((c.data ?? []).map(dbToEntry));
       setVentasEntries((v.data ?? []).map(dbToEntry));
     }).catch(console.error).finally(() => setDbLoading(false));
-  }, [status, id, period]);
+  }, [user, id, period]);
 
   const isCompras  = activeTab === 'compras';
   const entries    = isCompras ? comprasEntries : ventasEntries;
@@ -238,7 +239,7 @@ export default function ClienteDetalle() {
         const base64 = await fileToBase64(item.file);
         const rawType = item.file.type || '';
         const mediaType = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(rawType) ? rawType : 'image/jpeg';
-        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: base64, mediaType }) });
+        const res = await authFetch(endpoint, { method: 'POST', body: JSON.stringify({ imageBase64: base64, mediaType }) });
         const json = await res.json();
         const aiData = res.ok ? json.data : null;
         if (!res.ok) showToast('⚠️', json.error || 'Error de API', true);
@@ -248,18 +249,18 @@ export default function ClienteDetalle() {
           let cuit_entidad = cuit || null;
           if (cuit) {
             try {
-              const chk = await fetch(`/api/entidades?cuit=${encodeURIComponent(cuit)}`);
+              const chk = await authFetch(`/api/entidades?cuit=${encodeURIComponent(cuit)}`);
               const chkJ = await chk.json();
               if (!chkJ.data) {
                 const nombre = mode === 'ventas' ? entry.cliente : entry.proveedor;
                 const tipo = mode === 'ventas' ? 'cliente' : 'proveedor';
                 const confirmed = await new Promise(resolve => { entityResolveRef.current = resolve; setEntityModal({ nombre, cuit, tipo }); setEntityForm({ nombre: nombre || '' }); });
-                if (confirmed) await fetch('/api/entidades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cuit, nombre: confirmed.nombre, tipo }) });
+                if (confirmed) await authFetch('/api/entidades', { method: 'POST', body: JSON.stringify({ cuit, nombre: confirmed.nombre, tipo }) });
               }
             } catch (e) { console.error('Error verificando entidad:', e); }
           }
           try {
-            const saveRes = await fetch('/api/facturas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...entryToDb(entry, mode, period, id), cuit_entidad }) });
+            const saveRes = await authFetch('/api/facturas', { method: 'POST', body: JSON.stringify({ ...entryToDb(entry, mode, period, id), cuit_entidad }) });
             const saveJson = await saveRes.json();
             if (!saveRes.ok) throw new Error(saveJson.error);
             setE(e => [...e, dbToEntry(saveJson.data)]);
@@ -297,7 +298,7 @@ export default function ClienteDetalle() {
   const skipEntity = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current(null); entityResolveRef.current = null; } };
 
   const handleDelete = async (entryId, libro) => {
-    const res = await fetch(`/api/facturas/${entryId}`, { method: 'DELETE' });
+    const res = await authFetch(`/api/facturas/${entryId}`, { method: 'DELETE' });
     if (!res.ok) { showToast('⚠️', 'Error al eliminar', true); return; }
     if (libro === 'compras') setComprasEntries(x => x.filter(r => r.id !== entryId));
     else setVentasEntries(x => x.filter(r => r.id !== entryId));
@@ -306,7 +307,7 @@ export default function ClienteDetalle() {
   const isVentasModal = modal?.mode === 'ventas';
   const previewUrl = modal?.file?.type?.startsWith('image/') ? URL.createObjectURL(modal.file) : null;
 
-  if (status === 'loading' || status === 'unauthenticated') {
+  if (user === undefined || user === null) {
     return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted }}>Cargando…</div>;
   }
 
@@ -348,10 +349,10 @@ export default function ClienteDetalle() {
           <button onClick={() => setMenu(v => !v)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 7, padding: '6px 12px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
-              {(session?.user?.email || 'U')[0].toUpperCase()}
+              {(user?.email || 'U')[0].toUpperCase()}
             </div>
             <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
-              {session?.user?.name || session?.user?.email}
+              {user?.user_metadata?.name || user?.email}
             </span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
@@ -359,14 +360,19 @@ export default function ClienteDetalle() {
           {menu && (
             <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden', animation: 'fadeIn 0.15s ease', zIndex: 100 }}>
               <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, color: C.muted }}>{session?.user?.email}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 2 }}>{session?.user?.name || '—'}</div>
+                <div style={{ fontSize: 12, color: C.muted }}>{user?.email}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 2 }}>{user?.user_metadata?.name || '—'}</div>
               </div>
               <div style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}` }}>
                 <Link href="/" onClick={() => setMenu(false)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="1" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/></svg>
                   Dashboard de clientes
+                </Link>
+                <Link href="/configuracion" onClick={() => setMenu(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.93 2.93l1.41 1.41M9.66 9.66l1.41 1.41M2.93 11.07l1.41-1.41M9.66 4.34l1.41-1.41" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  Configuración
                 </Link>
                 <button onClick={() => { exportXLS(comprasEntries, ventasEntries, period, cliente?.nombre || 'cliente'); setMenu(false); }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.text, textAlign: 'left' }}>
@@ -375,7 +381,7 @@ export default function ClienteDetalle() {
                 </button>
               </div>
               <div style={{ padding: '8px 0' }}>
-                <button onClick={() => signOut({ callbackUrl: '/login' })}
+                <button onClick={() => signOut().then(() => router.replace('/login'))}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 10l3-3-3-3M12 7H5M5 2H2v10h3" stroke={C.red} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Cerrar sesión

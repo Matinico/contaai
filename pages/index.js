@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useState, useRef, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '../lib/auth-context';
+import { authFetch } from '../lib/auth-fetch';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
@@ -21,7 +22,7 @@ const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, m
 const inp = { width: '100%', background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontSize: 13, outline: 'none' };
 
 export default function Dashboard() {
-  const { data: session, status } = useSession();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const menuRef = useRef(null);
 
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const [formError, setFormError] = useState('');
   const [toast, setToast]     = useState(null);
 
-  useEffect(() => { if (status === 'unauthenticated') router.replace('/login'); }, [status, router]);
+  useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
 
   useEffect(() => {
     const h = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenu(false); };
@@ -43,13 +44,13 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (status === 'authenticated') loadClientes();
-  }, [status]);
+    if (user) loadClientes();
+  }, [user]);
 
   async function loadClientes() {
     setLoading(true);
     try {
-      const r = await fetch('/api/clientes');
+      const r = await authFetch('/api/clientes');
       const data = await r.json();
       setClientes(Array.isArray(data) ? data : []);
     } catch {
@@ -91,9 +92,8 @@ export default function Dashboard() {
     setSaving(true);
     setFormError('');
     try {
-      const r = await fetch('/api/clientes', {
+      const r = await authFetch('/api/clientes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       const data = await r.json();
@@ -118,11 +118,11 @@ export default function Dashboard() {
     return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  if (status === 'loading' || status === 'unauthenticated') {
+  if (user === undefined || user === null) {
     return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted }}>Cargando…</div>;
   }
 
-  const name = session?.user?.name || session?.user?.email?.split('@')[0] || 'usuario';
+  const name = user?.user_metadata?.name || user?.email?.split('@')[0] || 'usuario';
 
   return (
     <>
@@ -155,10 +155,10 @@ export default function Dashboard() {
           <button onClick={() => setMenu(v => !v)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 7, padding: '6px 12px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
-              {(session?.user?.email || 'U')[0].toUpperCase()}
+              {(user?.email || 'U')[0].toUpperCase()}
             </div>
             <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
-              {session?.user?.name || session?.user?.email}
+              {user?.user_metadata?.name || user?.email}
             </span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
@@ -166,11 +166,16 @@ export default function Dashboard() {
           {menu && (
             <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden', animation: 'fadeIn 0.15s ease', zIndex: 100 }}>
               <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, color: C.muted }}>{session?.user?.email}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 2 }}>{session?.user?.name || '—'}</div>
+                <div style={{ fontSize: 12, color: C.muted }}>{user?.email}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 2 }}>{user?.user_metadata?.name || '—'}</div>
               </div>
               <div style={{ padding: '8px 0' }}>
-                <button onClick={() => signOut({ callbackUrl: '/login' })}
+                <Link href="/configuracion" onClick={() => setMenu(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.93 2.93l1.41 1.41M9.66 9.66l1.41 1.41M2.93 11.07l1.41-1.41M9.66 4.34l1.41-1.41" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  Configuración
+                </Link>
+                <button onClick={() => signOut().then(() => router.replace('/login'))}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 10l3-3-3-3M12 7H5M5 2H2v10h3" stroke={C.red} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Cerrar sesión

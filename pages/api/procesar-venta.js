@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { verifyAuth } from '../../lib/verify-auth';
 
 export const config = {
   api: {
@@ -43,6 +44,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
+
+  const user = await verifyAuth(req);
+  if (!user) return res.status(401).json({ error: 'No autorizado' });
 
   const { imageBase64, mediaType } = req.body ?? {};
 

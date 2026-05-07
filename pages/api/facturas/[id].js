@@ -1,13 +1,11 @@
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { verifyAuth } from '../../../lib/verify-auth';
 import { supabase } from '../../../lib/supabase';
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) return res.status(401).json({ error: 'No autorizado' });
+  const user = await verifyAuth(req);
+  if (!user) return res.status(401).json({ error: 'No autorizado' });
 
   const { id } = req.query;
-  const userId = session.user.id;
 
   // ── DELETE /api/facturas/:id ─────────────────────────────────────────────
   if (req.method === 'DELETE') {

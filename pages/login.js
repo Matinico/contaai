@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { supabase } from '../lib/supabase-browser';
 
 const C = {
   navy:   '#1a3a5c',
@@ -15,52 +15,82 @@ const C = {
 };
 
 export default function Login() {
-  const { status } = useSession();
   const router = useRouter();
 
-  const [mode,     setMode]     = useState('login');
-  const [name,     setName]     = useState('');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm,  setConfirm]  = useState('');
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(false);
+  const [mode,        setMode]        = useState('login'); // login | register | totp | verify-email
+  const [name,        setName]        = useState('');
+  const [email,       setEmail]       = useState('');
+  const [password,    setPassword]    = useState('');
+  const [confirm,     setConfirm]     = useState('');
+  const [totp,        setTotp]        = useState('');
+  const [error,       setError]       = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [factorId,    setFactorId]    = useState(null);
+  const [challengeId, setChallengeId] = useState(null);
 
-  useEffect(() => { if (status === 'authenticated') router.replace('/'); }, [status, router]);
-
-  if (status === 'loading' || status === 'authenticated') return null;
-
-  function switchMode(m) { setMode(m); setError(''); setName(''); setEmail(''); setPassword(''); setConfirm(''); }
+  function switchMode(m) {
+    setMode(m); setError('');
+    setName(''); setEmail(''); setPassword(''); setConfirm(''); setTotp('');
+  }
 
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
 
     if (mode === 'register') {
-      if (!name.trim())              { setError('El nombre es obligatorio.'); return; }
-      if (password.length < 6)       { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
-      if (password !== confirm)      { setError('Las contraseñas no coinciden.'); return; }
+      if (!name.trim())            { setError('El nombre es obligatorio.'); return; }
+      if (password.length < 6)     { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
+      if (password !== confirm)    { setError('Las contraseñas no coinciden.'); return; }
     }
 
     setLoading(true);
     try {
       if (mode === 'register') {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, name }),
+        const { error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name: name.trim() } },
         });
-        const data = await res.json();
-        if (!res.ok) { setError(data.error || 'Error al crear la cuenta.'); setLoading(false); return; }
+        if (err) { setError(err.message); setLoading(false); return; }
+        setMode('verify-email');
+        setLoading(false);
+        return;
       }
 
-      const result = await signIn('credentials', { email, password, redirect: false });
-      if (result?.error) {
+      if (mode === 'totp') {
+        const { error: err } = await supabase.auth.mfa.verify({
+          factorId, challengeId, code: totp.replace(/\s/g, ''),
+        });
+        if (err) { setError('Código incorrecto. Intentá de nuevo.'); setLoading(false); return; }
+        router.replace('/');
+        return;
+      }
+
+      // login
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) {
         setError('Email o contraseña incorrectos.');
         setLoading(false);
-      } else {
-        router.replace('/');
+        return;
       }
+
+      // Check MFA level
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData?.nextLevel === 'aal2' && aalData?.nextLevel !== aalData?.currentLevel) {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const totpFactor = factors?.totp?.[0];
+        if (totpFactor) {
+          const { data: chal, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+          if (chalErr) { setError('Error al iniciar verificación 2FA.'); setLoading(false); return; }
+          setFactorId(totpFactor.id);
+          setChallengeId(chal.id);
+          setMode('totp');
+          setLoading(false);
+          return;
+        }
+      }
+
+      router.replace('/');
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
       setLoading(false);
@@ -69,9 +99,34 @@ export default function Login() {
 
   const isLogin = mode === 'login';
 
+  if (mode === 'verify-email') {
+    return (
+      <>
+        <Head><title>CIA — Verificar email</title></Head>
+        <style>{`*{margin:0;padding:0;box-sizing:border-box;}body{background:${C.bg};font-family:${C.font};min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}`}</style>
+        <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, background: C.navyLt, borderRadius: 16, marginBottom: 20 }}>
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect x="3" y="6" width="22" height="16" rx="2" stroke={C.navy} strokeWidth="1.7"/>
+              <path d="M3 8l11 8 11-8" stroke={C.navy} strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.navy, marginBottom: 10 }}>Verificá tu email</h2>
+          <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 24 }}>
+            Te enviamos un enlace a <strong>{email}</strong>.<br />
+            Hacé clic en él para activar tu cuenta y luego ingresá.
+          </p>
+          <button onClick={() => switchMode('login')} style={{ background: C.navy, color: 'white', border: 'none', borderRadius: 8, padding: '12px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            Ir al login
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <Head><title>CIA — {isLogin ? 'Iniciar sesión' : 'Crear cuenta'}</title></Head>
+      <Head><title>CIA — {mode === 'totp' ? 'Verificación 2FA' : isLogin ? 'Iniciar sesión' : 'Crear cuenta'}</title></Head>
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box;}
         body{background:${C.bg};font-family:${C.font};min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -101,59 +156,83 @@ export default function Login() {
         {/* Card */}
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 16, padding: 32, boxShadow: '0 4px 24px rgba(0,0,0,0.07)' }}>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-            {!isLogin && (
+          {mode === 'totp' ? (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ textAlign: 'center', marginBottom: 4 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>Verificación de dos pasos</div>
+                <div style={{ fontSize: 13, color: C.muted }}>Ingresá el código de tu app de autenticación</div>
+              </div>
               <div>
-                <label style={lbl}>Nombre <span style={{ color: C.red }}>*</span></label>
-                <input className="inp" value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre completo" required />
+                <label style={lbl}>Código TOTP <span style={{ color: C.red }}>*</span></label>
+                <input className="inp" value={totp} onChange={e => setTotp(e.target.value)}
+                  placeholder="123 456" maxLength={7} autoFocus />
               </div>
-            )}
+              {error && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
+                  {error}
+                </div>
+              )}
+              <button type="submit" disabled={loading} style={{ marginTop: 4, width: '100%', padding: '12px', background: loading ? '#94a3b8' : C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                {loading ? 'Verificando…' : 'Verificar'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            <div>
-              <label style={lbl}>Email <span style={{ color: C.red }}>*</span></label>
-              <input className="inp" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" required />
-            </div>
+              {!isLogin && (
+                <div>
+                  <label style={lbl}>Nombre <span style={{ color: C.red }}>*</span></label>
+                  <input className="inp" value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre completo" required />
+                </div>
+              )}
 
-            <div>
-              <label style={lbl}>Contraseña <span style={{ color: C.red }}>*</span></label>
-              <input className="inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
-            </div>
-
-            {!isLogin && (
               <div>
-                <label style={lbl}>Confirmar contraseña <span style={{ color: C.red }}>*</span></label>
-                <input className="inp" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" required />
+                <label style={lbl}>Email <span style={{ color: C.red }}>*</span></label>
+                <input className="inp" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@empresa.com" required />
               </div>
-            )}
 
-            {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
-                {error}
+              <div>
+                <label style={lbl}>Contraseña <span style={{ color: C.red }}>*</span></label>
+                <input className="inp" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
               </div>
-            )}
 
-            <button type="submit" disabled={loading} style={{ marginTop: 4, width: '100%', padding: '12px', background: loading ? '#94a3b8' : C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
-              {loading ? 'Procesando…' : isLogin ? 'Ingresar' : 'Crear cuenta'}
-            </button>
-          </form>
+              {!isLogin && (
+                <div>
+                  <label style={lbl}>Confirmar contraseña <span style={{ color: C.red }}>*</span></label>
+                  <input className="inp" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="••••••••" required />
+                </div>
+              )}
+
+              {error && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
+                  {error}
+                </div>
+              )}
+
+              <button type="submit" disabled={loading} style={{ marginTop: 4, width: '100%', padding: '12px', background: loading ? '#94a3b8' : C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
+                {loading ? 'Procesando…' : isLogin ? 'Ingresar' : 'Crear cuenta'}
+              </button>
+            </form>
+          )}
 
           {/* Switch mode */}
-          <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: C.muted }}>
-            {isLogin ? (
-              <>¿No tenés cuenta?{' '}
-                <button onClick={() => switchMode('register')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.navy, fontWeight: 600, fontSize: 13, padding: 0 }}>
-                  Registrate
-                </button>
-              </>
-            ) : (
-              <>¿Ya tenés cuenta?{' '}
-                <button onClick={() => switchMode('login')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.navy, fontWeight: 600, fontSize: 13, padding: 0 }}>
-                  Ingresá
-                </button>
-              </>
-            )}
-          </div>
+          {mode !== 'totp' && (
+            <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: C.muted }}>
+              {isLogin ? (
+                <>¿No tenés cuenta?{' '}
+                  <button onClick={() => switchMode('register')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.navy, fontWeight: 600, fontSize: 13, padding: 0 }}>
+                    Registrate
+                  </button>
+                </>
+              ) : (
+                <>¿Ya tenés cuenta?{' '}
+                  <button onClick={() => switchMode('login')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.navy, fontWeight: 600, fontSize: 13, padding: 0 }}>
+                    Ingresá
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>
