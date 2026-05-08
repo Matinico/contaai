@@ -230,7 +230,7 @@ export default function Login() {
               <div>
                 <label style={lbl}>Código de 6 dígitos <span style={{ color: C.red }}>*</span></label>
                 <input className="inp" value={emailOtp} onChange={e => setEmailOtp(e.target.value)}
-                  placeholder="123456" maxLength={6} autoFocus
+                  placeholder="12345678" maxLength={8} autoFocus
                   style={{ textAlign: 'center', fontSize: 22, letterSpacing: '0.25em', fontWeight: 700 }} />
               </div>
               {error && (
