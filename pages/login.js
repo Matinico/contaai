@@ -228,7 +228,7 @@ export default function Login() {
       <>
         <Head><title>CIA — Verificar email</title></Head>
         <style>{globalStyle}</style>
-        <div style={{ width: '100%', maxWidth: 420, animation: 'fadeIn 0.25s ease' }}>
+        <div style={{ width: '100%', maxWidth: 480, animation: 'fadeIn 0.25s ease' }}>
           <LogoCIA />
           <div style={card}>
             <div style={{ textAlign: 'center' }}>
@@ -264,7 +264,7 @@ export default function Login() {
       </Head>
       <style>{globalStyle}</style>
 
-      <div style={{ width: '100%', maxWidth: 420, animation: 'fadeIn 0.25s ease' }}>
+      <div style={{ width: '100%', maxWidth: 480, animation: 'fadeIn 0.25s ease' }}>
         <LogoCIA />
 
         <div style={card}>
