@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase-browser';
@@ -45,11 +45,18 @@ export default function Login() {
   const [loading,     setLoading]     = useState(false);
   const [factorId,    setFactorId]    = useState(null);
   const [challengeId, setChallengeId] = useState(null);
+  const [retryAfter,  setRetryAfter]  = useState(0);
 
   const otpRefs = useRef([]);
 
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const t = setTimeout(() => setRetryAfter(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [retryAfter]);
+
   function switchMode(m) {
-    setMode(m); setError('');
+    setMode(m); setError(''); setRetryAfter(0);
     setName(''); setEmail(''); setPassword(''); setConfirm('');
     setOtpDigits(Array(8).fill('')); setTotp('');
   }
@@ -170,8 +177,11 @@ export default function Login() {
       });
       if (otpErr) {
         const msg = otpErr.message?.toLowerCase() ?? '';
-        if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('after')) {
-          setError('Demasiados intentos. Esperá unos minutos y volvé a intentar.');
+        if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('after') || msg.includes('security purposes')) {
+          const match = otpErr.message?.match(/(\d+)\s*second/i);
+          const secs = match ? parseInt(match[1], 10) : 60;
+          setRetryAfter(secs);
+          setError(`Demasiados intentos. Esperá ${secs} segundos antes de volver a intentar.`);
         } else if (msg.includes('not found') || msg.includes('no user')) {
           setError('No encontramos una cuenta con ese email.');
         } else {
@@ -380,8 +390,8 @@ export default function Login() {
 
               {error && <ErrorBox msg={error} />}
 
-              <button type="submit" disabled={loading} style={{ ...btnPrimary(loading), marginTop: 4 }}>
-                {loading ? 'Procesando…' : isLogin ? 'Ingresar' : 'Crear cuenta'}
+              <button type="submit" disabled={loading || retryAfter > 0} style={{ ...btnPrimary(loading || retryAfter > 0), marginTop: 4 }}>
+                {loading ? 'Procesando…' : retryAfter > 0 ? `Esperá ${retryAfter}s…` : isLogin ? 'Ingresar' : 'Crear cuenta'}
               </button>
             </form>
           )}
