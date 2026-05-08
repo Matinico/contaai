@@ -32,16 +32,29 @@ export default function Dashboard() {
   const router = useRouter();
   const menuRef = useRef(null);
 
-  const [menu,      setMenu]      = useState(false);
-  const [clientes,  setClientes]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [modal,     setModal]     = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [form,      setForm]      = useState({ nombre: '', descripcion: '', empresas: [{ cuit: '', nombre_empresa: '' }] });
-  const [formError, setFormError] = useState('');
-  const [toast,     setToast]     = useState(null);
+  const [menu,            setMenu]            = useState(false);
+  const [clientes,        setClientes]        = useState([]);
+  const [loading,         setLoading]         = useState(true);
+  const [modal,           setModal]           = useState(false);
+  const [saving,          setSaving]          = useState(false);
+  const [form,            setForm]            = useState({ nombre: '', descripcion: '', empresas: [{ cuit: '', nombre_empresa: '' }] });
+  const [formError,       setFormError]       = useState('');
+  const [toast,           setToast]           = useState(null);
+  const [onboardingReady, setOnboardingReady] = useState(false);
 
   useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
+
+  // Check onboarding before showing dashboard
+  useEffect(() => {
+    if (!user) return;
+    authFetch('/api/onboarding')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.completed) router.replace('/onboarding');
+        else setOnboardingReady(true);
+      })
+      .catch(() => setOnboardingReady(true));
+  }, [user, router]);
 
   useEffect(() => {
     const h = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenu(false); };
@@ -49,7 +62,7 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  useEffect(() => { if (user) loadClientes(); }, [user]);
+  useEffect(() => { if (onboardingReady) loadClientes(); }, [onboardingReady]);
 
   async function loadClientes() {
     setLoading(true);
@@ -119,7 +132,7 @@ export default function Dashboard() {
     return new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
-  if (user === undefined || user === null) {
+  if (user === undefined || user === null || !onboardingReady) {
     return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
   }
 
