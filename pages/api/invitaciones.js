@@ -1,23 +1,23 @@
 import { supabase } from '../../lib/supabase';
 import { verifyAuth } from '../../lib/verify-auth';
+import { Resend } from 'resend';
 
 const APP_URL = 'https://contaai-seven.vercel.app';
 
 async function sendInvitationEmail(toEmail, estudioNombre, token) {
   const link = `${APP_URL}/invitacion?token=${token}`;
-  const apiKey = process.env.RESEND_API_KEY;
 
-  if (!apiKey) {
+  if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY no configurada — email no enviado. Link:', link);
     return { link, sent: false };
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      from:    'CIA <noreply@contaai-seven.vercel.app>',
-      to:      [toEmail],
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  try {
+    await resend.emails.send({
+      from:    'CIA <onboarding@resend.dev>',
+      to:      toEmail,
       subject: `Te invitaron a unirte a ${estudioNombre} en CIA`,
       html: `
         <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:40px 20px;">
@@ -35,15 +35,12 @@ async function sendInvitationEmail(toEmail, estudioNombre, token) {
           </p>
         </div>
       `,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
+    });
+    return { link, sent: true };
+  } catch (err) {
     console.error('Resend error:', err);
     return { link, sent: false };
   }
-  return { link, sent: true };
 }
 
 export default async function handler(req, res) {
