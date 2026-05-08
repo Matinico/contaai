@@ -6,14 +6,13 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 
 const C = {
+  bg:     '#f0f2f5',
   navy:   '#1a3a5c',
-  navyDk: '#122840',
-  navyLt: '#e8f0f7',
-  bg:     '#f0f4f8',
+  accent: '#7eb8f7',
   white:  '#ffffff',
   text:   '#1e293b',
   muted:  '#64748b',
-  border: '#e2e8f0',
+  border: '#dde1e7',
   green:  '#16a34a',
   red:    '#dc2626',
   yellow: '#d97706',
@@ -34,9 +33,8 @@ const CATEGORIES = {
 
 const PERIODS = ['05/2026','04/2026','03/2026','02/2026','01/2026','12/2025','11/2025','10/2025'];
 
-const inp  = { width: '100%', background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 10px', color: C.text, fontFamily: C.mono, fontSize: 13, outline: 'none', boxSizing: 'border-box' };
+const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 10px', color: C.text, fontFamily: C.mono, fontSize: 13, outline: 'none', boxSizing: 'border-box' };
 const lbl  = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const card = { background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' };
 
 function fmt(n) { return (n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
@@ -76,14 +74,7 @@ function exportXLS(compras, ventas, period, clienteNombre) {
 }
 
 function entryToDb(entry, libro, periodo, clienteId) {
-  return {
-    libro, periodo, cliente_id: clienteId,
-    fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro,
-    proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''),
-    cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''),
-    concepto: entry.concepto, categoria: entry.categoria,
-    alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total,
-  };
+  return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total };
 }
 
 function dbToEntry(row) {
@@ -102,14 +93,12 @@ export default function ClienteDetalle() {
   const resolveRef = useRef(null);
   const entityResolveRef = useRef(null);
 
-  // Client state
-  const [menu, setMenu]       = useState(false);
-  const [cliente, setCliente] = useState(null);
+  const [menu,       setMenu]       = useState(false);
+  const [cliente,    setCliente]    = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
-  const [pageError, setPageError]     = useState(null);
-
-  // IVA state
-  const [activeTab,      setActiveTab]      = useState('compras');
+  const [pageError,  setPageError]  = useState(null);
+  const [mainTab,    setMainTab]    = useState('iva');
+  const [activeTab,  setActiveTab]  = useState('compras');
   const [comprasEntries, setComprasEntries] = useState([]);
   const [comprasQueue,   setComprasQueue]   = useState([]);
   const [comprasProc,    setComprasProc]    = useState(false);
@@ -138,7 +127,6 @@ export default function ClienteDetalle() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  // Load client info
   useEffect(() => {
     if (user && id) {
       authFetch(`/api/clientes/${id}`)
@@ -149,12 +137,9 @@ export default function ClienteDetalle() {
     }
   }, [user, id]);
 
-  // Load facturas for this client + period
   useEffect(() => {
     if (!user || !id) return;
-    setComprasEntries([]);
-    setVentasEntries([]);
-    setDbLoading(true);
+    setComprasEntries([]); setVentasEntries([]); setDbLoading(true);
     Promise.all([
       authFetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=compras&cliente_id=${id}`).then(r => r.json()),
       authFetch(`/api/facturas?periodo=${encodeURIComponent(period)}&libro=ventas&cliente_id=${id}`).then(r => r.json()),
@@ -172,18 +157,14 @@ export default function ClienteDetalle() {
   const setFilter  = isCompras ? setComprasFilter : setVentasFilter;
   const search     = isCompras ? comprasSearch : ventasSearch;
   const setSearch  = isCompras ? setComprasSearch : setVentasSearch;
-  const setEntries = isCompras ? setComprasEntries : setVentasEntries;
 
   const filtered = entries.filter(e => {
     const name = isCompras ? e.proveedor : e.cliente;
     if (search && !name?.toLowerCase().includes(search.toLowerCase())) return false;
     if (filter !== 'all' && String(e.alicuota) !== filter) return false;
     if (fechaDesde || fechaHasta) {
-      // e.fecha puede ser DD/MM/YYYY o YYYY-MM-DD; normalizamos a YYYY-MM-DD para comparar
       const parts = e.fecha ? e.fecha.split(/[-/]/) : [];
-      const iso = parts.length === 3
-        ? (parts[0].length === 4 ? e.fecha : `${parts[2]}-${parts[1]}-${parts[0]}`)
-        : '';
+      const iso = parts.length === 3 ? (parts[0].length === 4 ? e.fecha : `${parts[2]}-${parts[1]}-${parts[0]}`) : '';
       if (fechaDesde && iso && iso < fechaDesde) return false;
       if (fechaHasta && iso && iso > fechaHasta) return false;
     }
@@ -195,6 +176,7 @@ export default function ClienteDetalle() {
   const totalTotal    = entries.reduce((s, e) => s + e.total, 0);
   const debitoFiscal  = ventasEntries.reduce((s, e) => s + e.iva, 0);
   const creditoFiscal = comprasEntries.reduce((s, e) => s + e.iva, 0);
+  const saldoIva      = debitoFiscal - creditoFiscal;
 
   const showToast = (icon, msg, isErr = false) => { setToast({ icon, msg, isErr }); setTimeout(() => setToast(null), 3500); };
 
@@ -293,11 +275,10 @@ export default function ClienteDetalle() {
     showToast('✓', (isV ? entry.cliente : entry.proveedor) || 'Comprobante guardado');
   };
 
-  const cancelModal = () => { setModal(null); if (resolveRef.current) { resolveRef.current(null); resolveRef.current = null; } };
-  const confirmEntity = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current({ nombre: entityForm.nombre }); entityResolveRef.current = null; } };
-  const skipEntity = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current(null); entityResolveRef.current = null; } };
-
-  const handleDelete = async (entryId, libro) => {
+  const cancelModal    = () => { setModal(null); if (resolveRef.current) { resolveRef.current(null); resolveRef.current = null; } };
+  const confirmEntity  = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current({ nombre: entityForm.nombre }); entityResolveRef.current = null; } };
+  const skipEntity     = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current(null); entityResolveRef.current = null; } };
+  const handleDelete   = async (entryId, libro) => {
     const res = await authFetch(`/api/facturas/${entryId}`, { method: 'DELETE' });
     if (!res.ok) { showToast('⚠️', 'Error al eliminar', true); return; }
     if (libro === 'compras') setComprasEntries(x => x.filter(r => r.id !== entryId));
@@ -305,10 +286,11 @@ export default function ClienteDetalle() {
   };
 
   const isVentasModal = modal?.mode === 'ventas';
-  const previewUrl = modal?.file?.type?.startsWith('image/') ? URL.createObjectURL(modal.file) : null;
+  const previewUrl    = modal?.file?.type?.startsWith('image/') ? URL.createObjectURL(modal.file) : null;
+  const initials      = (user?.user_metadata?.name || user?.email || 'U').slice(0, 2).toUpperCase();
 
   if (user === undefined || user === null) {
-    return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted }}>Cargando…</div>;
+    return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
   }
 
   return (
@@ -320,70 +302,54 @@ export default function ClienteDetalle() {
         ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
         input,select,button{font-family:${C.font};}
         input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-        .tr-hover:hover td{background:#f8fafc;}
+        .tr-hover:hover td{background:#f5f7fa;}
+        .menu-item:hover{background:#f5f7fa;}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
-      {/* HEADER */}
-      <header style={{ background: C.navy, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', position: 'sticky', top: 0, zIndex: 50 }}>
+      {/* ── TOPBAR ── */}
+      <header style={{ background: C.navy, height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <div style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.15)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <rect x="3" y="2" width="11" height="14" rx="1.5" stroke="white" strokeWidth="1.5"/>
-                <path d="M6 7h5M6 10h3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="15" cy="14" r="4" fill={C.navy} stroke="white" strokeWidth="1.5"/>
-                <path d="M13 14l1.5 1.5L17 12.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span style={{ color: 'white', fontWeight: 700, fontSize: 17, letterSpacing: '0.02em' }}>CIA</span>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
+              <rect x="8" y="4" width="30" height="38" rx="3" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="2"/>
+              <path d="M15 15h16M15 22h12M15 29h14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+              <circle cx="39" cy="40" r="12" fill={C.accent}/>
+              <path d="M33 40l4.5 4.5L46 34" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '2px' }}>CIA</span>
           </Link>
-          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 16, margin: '0 2px' }}>/</span>
-          <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: 500 }}>
-            {pageLoading ? '…' : cliente?.nombre || 'Cliente'}
-          </span>
         </div>
 
         <div ref={menuRef} style={{ position: 'relative' }}>
           <button onClick={() => setMenu(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 7, padding: '6px 12px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
-              {(user?.email || 'U')[0].toUpperCase()}
+            style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 12px 6px 8px', color: 'white', cursor: 'pointer' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.navy, flexShrink: 0 }}>
+              {initials}
             </div>
-            <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.user_metadata?.name || user?.email}
             </span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/></svg>
           </button>
 
           {menu && (
-            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, width: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden', animation: 'fadeIn 0.15s ease', zIndex: 100 }}>
-              <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 12, color: C.muted }}>{user?.email}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 2 }}>{user?.user_metadata?.name || '—'}</div>
+            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, width: 230, boxShadow: '0 8px 28px rgba(0,0,0,0.13)', overflow: 'hidden', animation: 'fadeIn 0.15s ease', zIndex: 100 }}>
+              <div style={{ padding: '14px 16px', borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{user?.user_metadata?.name || '—'}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{user?.email}</div>
               </div>
-              <div style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}` }}>
-                <Link href="/" onClick={() => setMenu(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="1" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/></svg>
-                  Dashboard de clientes
-                </Link>
-                <Link href="/configuracion" onClick={() => setMenu(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7 1v2M7 11v2M1 7h2M11 7h2M2.93 2.93l1.41 1.41M9.66 9.66l1.41 1.41M2.93 11.07l1.41-1.41M9.66 4.34l1.41-1.41" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
+              <div style={{ padding: '6px 0' }}>
+                <Link href="/configuracion" onClick={() => setMenu(false)} className="menu-item"
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1.06 1.06M11.24 11.24l1.06 1.06M2.7 12.3l1.06-1.06M11.24 3.76l1.06-1.06" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
                   Configuración
                 </Link>
-                <button onClick={() => { exportXLS(comprasEntries, ventasEntries, period, cliente?.nombre || 'cliente'); setMenu(false); }}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.text, textAlign: 'left' }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 10v2h10v-2" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Exportar Excel
-                </button>
-              </div>
-              <div style={{ padding: '8px 0' }}>
-                <button onClick={() => signOut().then(() => router.replace('/login'))}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 10l3-3-3-3M12 7H5M5 2H2v10h3" stroke={C.red} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
+                <button onClick={() => signOut().then(() => router.replace('/login'))} className="menu-item"
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M10 11l3-3.5L10 4M13 7.5H5.5M5.5 2H2v11h3.5" stroke={C.red} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Cerrar sesión
                 </button>
               </div>
@@ -392,131 +358,166 @@ export default function ClienteDetalle() {
         </div>
       </header>
 
-      {/* BODY */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px' }}>
-        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: C.muted, fontSize: 13, textDecoration: 'none', marginBottom: 20, fontWeight: 500 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M8 10l-3-3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          Volver al dashboard
-        </Link>
+      {/* ── BODY ── */}
+      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 24px' }}>
+
+        {/* Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 22, fontSize: 13 }}>
+          <Link href="/" style={{ color: C.muted, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
+          <span style={{ color: C.border }}>›</span>
+          <span style={{ color: C.text, fontWeight: 600 }}>
+            {pageLoading ? '…' : cliente?.nombre || 'Cliente'}
+          </span>
+        </div>
 
         {pageLoading ? (
-          <div style={{ textAlign: 'center', color: C.muted, padding: '80px 0' }}>Cargando…</div>
+          <div style={{ textAlign: 'center', color: C.muted, padding: '80px 0', fontSize: 14 }}>Cargando…</div>
         ) : pageError ? (
-          <div style={{ textAlign: 'center', color: C.red, padding: '80px 0' }}>{pageError}</div>
+          <div style={{ textAlign: 'center', color: C.red, padding: '80px 0', fontSize: 14 }}>{pageError}</div>
         ) : cliente ? (
           <>
-            {/* Client info + empresas row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-              {/* Info */}
-              <div style={{ ...card, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 48, height: 48, background: C.navyLt, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: C.navy, flexShrink: 0 }}>
+            {/* ── Client header ── */}
+            <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 46, height: 46, background: '#e8f3fd', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 700, color: C.navy, flexShrink: 0 }}>
                   {cliente.nombre[0].toUpperCase()}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cliente.nombre}</div>
-                  {cliente.descripcion && <div style={{ fontSize: 12, color: C.muted, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cliente.descripcion}</div>}
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-                    Cliente desde {new Date(cliente.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                <div>
+                  <h1 style={{ fontSize: 20, fontWeight: 700, color: C.navy, marginBottom: 4 }}>{cliente.nombre}</h1>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {cliente.empresas?.map(e => (
+                      <span key={e.id} style={{ background: '#e8f3fd', color: C.navy, padding: '2px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, fontFamily: C.mono }}>
+                        {e.cuit}
+                      </span>
+                    ))}
+                    {!cliente.empresas?.length && <span style={{ color: C.muted, fontSize: 12 }}>Sin empresas</span>}
                   </div>
                 </div>
               </div>
 
-              {/* Empresas */}
-              <div style={{ ...card, padding: '20px 24px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-                  Empresas ({cliente.empresas?.length || 0})
-                </div>
-                {!cliente.empresas?.length ? (
-                  <div style={{ fontSize: 13, color: C.muted }}>Sin empresas asociadas.</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 80, overflowY: 'auto' }}>
-                    {cliente.empresas.map(e => (
-                      <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.muted }}>{e.cuit}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{e.nombre_empresa}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* Period selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Período</span>
+                <select value={period} onChange={e => setPeriod(e.target.value)}
+                  style={{ background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '7px 12px', color: C.navy, fontSize: 13, fontWeight: 700, outline: 'none', cursor: 'pointer' }}>
+                  {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
               </div>
             </div>
 
-            {/* IVA Liquidador */}
-            <div style={{ ...card, marginBottom: 20, overflow: 'hidden' }}>
-              {/* IVA section header */}
-              <div style={{ background: C.navy, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <span style={{ color: 'white', fontWeight: 700, fontSize: 15 }}>Liquidación de IVA</span>
-                  <div style={{ display: 'flex', gap: 2 }}>
+            {/* ── Main tabs ── */}
+            <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: 4, width: 'fit-content', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+              {[
+                { key: 'iva',       label: 'Liquidación de IVA', enabled: true  },
+                { key: 'sueldos',   label: 'Sueldos',            enabled: false },
+                { key: 'documentos',label: 'Documentos',         enabled: false },
+              ].map(t => (
+                <button key={t.key} onClick={() => t.enabled && setMainTab(t.key)}
+                  style={{ padding: '8px 18px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: t.enabled ? 'pointer' : 'not-allowed', transition: 'all 0.15s', background: mainTab === t.key ? C.navy : 'transparent', color: mainTab === t.key ? 'white' : t.enabled ? C.muted : '#c0c8d0', opacity: t.enabled ? 1 : 0.6 }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── IVA Content ── */}
+            {mainTab === 'iva' && (
+              <>
+                {/* IVA Position bar */}
+                <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, padding: '16px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
+                  <div style={{ textAlign: 'center', flex: 1, minWidth: 120 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Débito fiscal</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: C.red, fontFamily: C.mono }}>$ {fmt(debitoFiscal)}</div>
+                  </div>
+                  <div style={{ fontSize: 22, color: C.muted, padding: '0 12px', fontWeight: 300 }}>−</div>
+                  <div style={{ textAlign: 'center', flex: 1, minWidth: 120 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Crédito fiscal</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: C.green, fontFamily: C.mono }}>$ {fmt(creditoFiscal)}</div>
+                  </div>
+                  <div style={{ fontSize: 22, color: C.muted, padding: '0 12px', fontWeight: 300 }}>=</div>
+                  <div style={{ textAlign: 'center', flex: 1, minWidth: 140, background: saldoIva > 0 ? '#fef2f2' : saldoIva < 0 ? '#f0fdf4' : '#f8fafc', borderRadius: 10, padding: '10px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                      {saldoIva > 0 ? 'Saldo a pagar' : saldoIva < 0 ? 'Saldo a favor' : 'Saldo'}
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: saldoIva > 0 ? C.red : saldoIva < 0 ? C.green : C.muted, fontFamily: C.mono }}>
+                      $ {fmt(Math.abs(saldoIva))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-tabs compras/ventas */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 2, background: C.white, borderRadius: 8, border: `1px solid ${C.border}`, padding: 3 }}>
                     {[{ key: 'compras', label: 'Compras' }, { key: 'ventas', label: 'Ventas' }].map(t => (
                       <button key={t.key} onClick={() => setActiveTab(t.key)}
-                        style={{ padding: '5px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: activeTab === t.key ? 'rgba(255,255,255,0.2)' : 'transparent', color: activeTab === t.key ? 'white' : 'rgba(255,255,255,0.6)' }}>
+                        style={{ padding: '6px 16px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: activeTab === t.key ? C.navy : 'transparent', color: activeTab === t.key ? 'white' : C.muted, transition: 'all 0.15s' }}>
                         {t.label}
                       </button>
                     ))}
                   </div>
                 </div>
-                <select value={period} onChange={e => setPeriod(e.target.value)}
-                  style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 7, padding: '6px 12px', color: 'white', fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer' }}>
-                  {PERIODS.map(p => <option key={p} value={p} style={{ background: C.navy }}>{p}</option>)}
-                </select>
-              </div>
 
-              <div style={{ padding: '20px' }}>
-                {/* Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+                {/* 4 stat cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
                   {(isCompras ? [
-                    { label: 'Comprobantes',       val: comprasEntries.length,    accent: C.navy },
-                    { label: 'Neto Gravado',        val: '$ ' + fmt(totalNeto),   accent: '#0369a1' },
-                    { label: 'IVA Crédito Fiscal',  val: '$ ' + fmt(totalIva),    accent: '#047857' },
-                    { label: 'Total Compras',       val: '$ ' + fmt(totalTotal),  accent: '#b45309' },
+                    { label: 'Comprobantes',      val: comprasEntries.length,   mono: false, color: C.navy    },
+                    { label: 'Neto gravado',       val: '$ ' + fmt(totalNeto),  mono: true,  color: '#0369a1' },
+                    { label: 'IVA crédito fiscal', val: '$ ' + fmt(totalIva),   mono: true,  color: C.green   },
+                    { label: 'Total',              val: '$ ' + fmt(totalTotal), mono: true,  color: C.navy    },
                   ] : [
-                    { label: 'Comprobantes',        val: ventasEntries.length,     accent: C.navy },
-                    { label: 'Neto Gravado',        val: '$ ' + fmt(totalNeto),   accent: '#0369a1' },
-                    { label: 'IVA Débito Fiscal',   val: '$ ' + fmt(totalIva),    accent: '#9333ea' },
-                    { label: 'Total Ventas',        val: '$ ' + fmt(totalTotal),  accent: '#b45309' },
+                    { label: 'Comprobantes',      val: ventasEntries.length,    mono: false, color: C.navy    },
+                    { label: 'Neto gravado',       val: '$ ' + fmt(totalNeto),  mono: true,  color: '#0369a1' },
+                    { label: 'IVA débito fiscal',  val: '$ ' + fmt(totalIva),   mono: true,  color: C.red     },
+                    { label: 'Total',              val: '$ ' + fmt(totalTotal), mono: true,  color: C.navy    },
                   ]).map(s => (
-                    <div key={s.label} style={{ background: '#f8fafc', border: `1px solid ${C.border}`, borderTop: `3px solid ${s.accent}`, borderRadius: 8, padding: '14px 16px' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{s.label}</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: s.accent, fontVariantNumeric: 'tabular-nums' }}>{s.val}</div>
+                    <div key={s.label} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{s.label}</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: s.color, fontFamily: s.mono ? C.mono : C.font, fontVariantNumeric: 'tabular-nums' }}>{s.val}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Two-column: upload + table */}
-                <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '290px 1fr', gap: 16, alignItems: 'start' }}>
 
                   {/* Upload panel */}
-                  <div style={{ background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
-                      {isCompras ? 'Facturas de compra' : 'Facturas de venta'}
+                  <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>
+                      {isCompras ? 'Facturas recibidas' : 'Facturas emitidas'}
                     </div>
+
+                    {/* Drop zone */}
                     <div
                       onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files, activeTab); }}
                       onDragOver={e => e.preventDefault()}
                       onClick={() => fileRef.current?.click()}
-                      style={{ border: `2px dashed ${C.border}`, borderRadius: 8, padding: '20px 12px', textAlign: 'center', cursor: 'pointer', background: C.white, transition: 'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.navy; e.currentTarget.style.background = C.navyLt; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.white; }}>
+                      style={{ border: `2px dashed ${C.border}`, borderRadius: 10, padding: '22px 12px', textAlign: 'center', cursor: 'pointer', background: '#fafbfc', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.navy; e.currentTarget.style.background = '#e8f3fd'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = '#fafbfc'; }}>
                       <input ref={fileRef} type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }} onChange={e => handleFiles(e.target.files, activeTab)} />
-                      <svg width="32" height="32" viewBox="0 0 36 36" fill="none" style={{ margin: '0 auto 8px' }}><rect x="6" y="4" width="18" height="22" rx="2" stroke={C.muted} strokeWidth="1.5"/><path d="M10 10h10M10 14h7M10 18h5" stroke={C.muted} strokeWidth="1.5" strokeLinecap="round"/><circle cx="26" cy="26" r="8" fill={C.navy}/><path d="M23 26l2.5 2.5L29 23" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>{isCompras ? 'Arrastrá las facturas recibidas' : 'Arrastrá las facturas emitidas'}</div>
+                      <svg width="34" height="34" viewBox="0 0 36 36" fill="none" style={{ margin: '0 auto 8px' }}>
+                        <rect x="6" y="4" width="18" height="22" rx="2" stroke={C.muted} strokeWidth="1.5"/>
+                        <path d="M10 10h10M10 14h7M10 18h5" stroke={C.muted} strokeWidth="1.5" strokeLinecap="round"/>
+                        <circle cx="26" cy="26" r="8" fill={C.navy}/>
+                        <path d="M23 26l2.5 2.5L29 23" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>Arrastrá las facturas aquí</div>
                       <div style={{ fontSize: 11, color: C.muted }}>Imágenes o PDFs</div>
                     </div>
 
+                    {/* Queue */}
                     {queue.length > 0 && (
                       <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 180, overflowY: 'auto' }}>
                         {queue.map((item, i) => {
                           const sc = { pending: C.muted, processing: C.yellow, done: C.green, error: C.red }[item.status];
                           return (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: C.white, border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 12 }}>
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#fafbfc', border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 12 }}>
                               <div style={{ width: 28, height: 28, borderRadius: 4, background: C.border, flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
                                 {item.file.type?.startsWith('image/') ? <img src={URL.createObjectURL(item.file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📄'}
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: C.text }}>{item.file.name}</div>
                                 <div style={{ fontSize: 10, color: sc, marginTop: 1 }}>
-                                  {item.status === 'pending' ? 'Pendiente' : item.status === 'processing' ? 'Procesando…' : item.status === 'done' ? 'Listo' : 'Error'}
+                                  {{ pending: 'Pendiente', processing: 'Procesando…', done: 'Listo', error: 'Error' }[item.status]}
                                 </div>
                               </div>
                             </div>
@@ -527,11 +528,11 @@ export default function ClienteDetalle() {
 
                     <button onClick={() => processQueue(activeTab)}
                       disabled={processing || !queue.some(q => q.status === 'pending')}
-                      style={{ width: '100%', marginTop: 12, padding: '10px', background: C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (processing || !queue.some(q => q.status === 'pending')) ? 0.45 : 1, transition: 'opacity 0.15s' }}>
+                      style={{ width: '100%', marginTop: 12, padding: '10px', background: C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (processing || !queue.some(q => q.status === 'pending')) ? 0.4 : 1, transition: 'opacity 0.15s' }}>
                       {processing ? 'Procesando…' : 'Procesar con IA'}
                     </button>
 
-                    <div style={{ marginTop: 14, padding: '10px 12px', background: C.white, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                    <div style={{ marginTop: 14, padding: '10px 12px', background: '#fafbfc', border: `1px solid ${C.border}`, borderRadius: 8 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Alícuotas IVA</div>
                       {[['Servicios públicos', '27%'], ['Servicios / Honorarios', '21%'], ['Insumos básicos', '10,5%'], ['Exento / Monotributo', '0%']].map(([l, v]) => (
                         <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
@@ -542,17 +543,20 @@ export default function ClienteDetalle() {
                     </div>
                   </div>
 
-                  {/* Table */}
-                  <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {/* Fila 1: búsqueda + alícuotas + contador */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                  {/* Table panel */}
+                  <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+
+                    {/* Table toolbar */}
+                    <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '5px 10px' }}>
+                          {/* Search */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 7, padding: '5px 10px' }}>
                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke={C.muted} strokeWidth="1.3"/><path d="M9.5 9.5l2 2" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
                             <input placeholder={isCompras ? 'Buscar proveedor…' : 'Buscar cliente…'} value={search} onChange={e => setSearch(e.target.value)}
-                              style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, width: 130 }} />
+                              style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, width: 130, fontFamily: C.font }} />
                           </div>
+                          {/* Alicuota filters */}
                           {['all', '21', '10.5', '27'].map(f => (
                             <button key={f} onClick={() => setFilter(f)}
                               style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filter === f ? C.navy : C.border}`, background: filter === f ? C.navy : 'transparent', color: filter === f ? 'white' : C.muted, transition: 'all 0.15s' }}>
@@ -560,17 +564,24 @@ export default function ClienteDetalle() {
                             </button>
                           ))}
                         </div>
-                        <span style={{ fontSize: 11, color: C.muted }}>{filtered.length} comprobante{filtered.length !== 1 ? 's' : ''}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, color: C.muted }}>{filtered.length} comprobante{filtered.length !== 1 ? 's' : ''}</span>
+                          <button onClick={() => exportXLS(comprasEntries, ventasEntries, period, cliente?.nombre || 'cliente')}
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>
+                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 10v2h10v-2" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            Exportar Excel
+                          </button>
+                        </div>
                       </div>
-                      {/* Fila 2: filtro por fecha */}
+                      {/* Date filters */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
                           <span style={{ fontSize: 11, color: C.muted }}>Desde</span>
                           <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
                             style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, cursor: 'pointer', fontFamily: C.font }} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
                           <span style={{ fontSize: 11, color: C.muted }}>Hasta</span>
                           <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
                             style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, cursor: 'pointer', fontFamily: C.font }} />
@@ -584,10 +595,11 @@ export default function ClienteDetalle() {
                       </div>
                     </div>
 
+                    {/* Table */}
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: `1px solid ${C.border}` }}>
+                          <tr style={{ background: '#f8f9fb', borderBottom: `1px solid ${C.border}` }}>
                             {(isCompras
                               ? ['#', 'Fecha', 'Comprobante', 'Proveedor', 'CUIT', 'Concepto', 'Cat.', 'Alíc.', 'Neto', 'IVA CF', 'Total', '']
                               : ['#', 'Fecha', 'Comprobante', 'Cliente', 'CUIT', 'Concepto', 'Cat.', 'Alíc.', 'Neto', 'IVA DF', 'Total', '']
@@ -600,7 +612,7 @@ export default function ClienteDetalle() {
                           {dbLoading ? (
                             <tr><td colSpan={12} style={{ padding: '40px', textAlign: 'center', color: C.muted, fontSize: 13 }}>Cargando…</td></tr>
                           ) : filtered.length === 0 ? (
-                            <tr><td colSpan={12} style={{ padding: '40px', textAlign: 'center', color: C.muted }}>
+                            <tr><td colSpan={12} style={{ padding: '48px', textAlign: 'center', color: C.muted }}>
                               <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
                               <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>{entries.length > 0 ? 'Sin resultados' : 'Listo para procesar'}</div>
                               <div style={{ fontSize: 12 }}>{entries.length > 0 ? 'Cambiá los filtros' : 'Cargá facturas y presioná Procesar con IA'}</div>
@@ -610,7 +622,7 @@ export default function ClienteDetalle() {
                               <td style={{ padding: '9px 10px', color: C.muted, fontFamily: C.mono }}>{i + 1}</td>
                               <td style={{ padding: '9px 10px', fontFamily: C.mono, color: C.muted, whiteSpace: 'nowrap' }}>{e.fecha}</td>
                               <td style={{ padding: '9px 10px', fontFamily: C.mono, fontSize: 11, whiteSpace: 'nowrap' }}>
-                                <span style={{ background: C.navyLt, color: C.navy, border: `1px solid ${C.border}`, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>F{e.tipo}</span>
+                                <span style={{ background: '#e8f3fd', color: C.navy, border: `1px solid ${C.border}`, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>F{e.tipo}</span>
                                 {' '}{e.nro}
                               </td>
                               <td style={{ padding: '9px 10px', fontWeight: 600, maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isCompras ? e.proveedor : e.cliente}</td>
@@ -618,10 +630,10 @@ export default function ClienteDetalle() {
                               <td style={{ padding: '9px 10px', color: C.muted, maxWidth: 100, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={e.concepto}>{e.concepto || '—'}</td>
                               <td style={{ padding: '9px 10px', fontSize: 11, color: C.muted }}>{CATEGORIES[e.categoria]?.label || e.categoria}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'center' }}>
-                                <span style={{ fontFamily: C.mono, fontSize: 11, background: C.navyLt, color: C.navy, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>{e.alicuota}%</span>
+                                <span style={{ fontFamily: C.mono, fontSize: 11, background: '#e8f3fd', color: C.navy, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>{e.alicuota}%</span>
                               </td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 500, whiteSpace: 'nowrap' }}>$ {fmt(e.neto)}</td>
-                              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: isCompras ? '#047857' : '#9333ea', whiteSpace: 'nowrap' }}>$ {fmt(e.iva)}</td>
+                              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: isCompras ? C.green : C.red, whiteSpace: 'nowrap' }}>$ {fmt(e.iva)}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 700, whiteSpace: 'nowrap' }}>$ {fmt(e.total)}</td>
                               <td style={{ padding: '9px 8px' }}>
                                 <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
@@ -634,7 +646,7 @@ export default function ClienteDetalle() {
                     </div>
 
                     {entries.length > 0 && (
-                      <div style={{ padding: '10px 14px', borderTop: `1px solid ${C.border}`, background: '#f8fafc', display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <div style={{ padding: '10px 16px', borderTop: `1px solid ${C.border}`, background: '#f8f9fb', display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
                         {[
                           { l: 'Neto 21%',   v: entries.filter(e => e.alicuota === 21).reduce((s, e) => s + e.neto, 0) },
                           { l: 'Neto 10,5%', v: entries.filter(e => e.alicuota === 10.5).reduce((s, e) => s + e.neto, 0) },
@@ -650,13 +662,13 @@ export default function ClienteDetalle() {
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </>
         ) : null}
-      </div>
+      </main>
 
-      {/* MODAL FACTURA */}
+      {/* ── MODAL FACTURA ── */}
       {modal && (
         <div onClick={cancelModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
@@ -688,7 +700,7 @@ export default function ClienteDetalle() {
                     { label: 'CUIT Proveedor', key: 'cuit',      placeholder: '20-12345678-9', span: 1 },
                     { label: 'CUIT Receptor',  key: 'cuit_rec',  placeholder: '20-12345678-9', span: 1 },
                   ]),
-                  { label: 'Concepto',         key: 'concepto', placeholder: 'Descripción',   span: 2 },
+                  { label: 'Concepto', key: 'concepto', placeholder: 'Descripción', span: 2 },
                 ].map(f => (
                   <div key={f.key} style={{ gridColumn: `span ${f.span}` }}>
                     <label style={lbl}>{f.label}</label>
@@ -720,24 +732,24 @@ export default function ClienteDetalle() {
                 </div>
                 <div>
                   <label style={lbl}>{isVentasModal ? 'IVA Débito Fiscal' : 'IVA Crédito Fiscal'}</label>
-                  <input type="number" value={form.iva || 0} onChange={e => updateForm('iva', e.target.value)} step="0.01" style={{ ...inp, color: isVentasModal ? '#9333ea' : '#0369a1', fontWeight: 600 }} />
+                  <input type="number" value={form.iva || 0} onChange={e => updateForm('iva', e.target.value)} step="0.01" style={{ ...inp, color: isVentasModal ? C.red : C.green, fontWeight: 600 }} />
                 </div>
               </div>
             </div>
             <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={cancelModal} style={{ padding: '9px 18px', background: 'white', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={cancelModal} style={{ padding: '9px 18px', background: C.white, color: C.muted, border: `1.5px solid ${C.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={confirmEntry} style={{ padding: '9px 22px', background: C.navy, color: 'white', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Confirmar y guardar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL NUEVA ENTIDAD */}
+      {/* ── MODAL NUEVA ENTIDAD ── */}
       {entityModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 12, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: C.navyLt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 38, height: 38, borderRadius: 9, background: '#e8f3fd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 5v5l3 3" stroke={C.navy} strokeWidth="1.5" strokeLinecap="round"/><circle cx="10" cy="10" r="8" stroke={C.navy} strokeWidth="1.5"/></svg>
               </div>
               <div>
@@ -748,7 +760,7 @@ export default function ClienteDetalle() {
             <div style={{ marginBottom: 12 }}>
               <label style={lbl}>CUIT</label>
               {entityModal.cuit
-                ? <div style={{ ...inp, background: '#f8fafc', color: C.muted, fontFamily: C.mono }}>{entityModal.cuit}</div>
+                ? <div style={{ ...inp, background: '#f8fafc', color: C.muted }}>{entityModal.cuit}</div>
                 : <div style={{ padding: '10px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: C.red, fontSize: 12, fontWeight: 600 }}>⚠️ No se detectó CUIT</div>
               }
             </div>
@@ -759,14 +771,14 @@ export default function ClienteDetalle() {
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={skipEntity} style={{ padding: '8px 16px', background: 'white', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Omitir</button>
+              <button onClick={skipEntity} style={{ padding: '8px 16px', background: C.white, color: C.muted, border: `1.5px solid ${C.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Omitir</button>
               {entityModal.cuit && <button onClick={confirmEntity} style={{ padding: '8px 18px', background: C.navy, color: 'white', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Guardar entidad</button>}
             </div>
           </div>
         </div>
       )}
 
-      {/* TOAST */}
+      {/* ── Toast ── */}
       {toast && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, background: C.white, border: `1px solid ${toast.isErr ? '#fecaca' : C.border}`, borderLeft: `4px solid ${toast.isErr ? C.red : C.green}`, borderRadius: 8, padding: '11px 16px', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, zIndex: 300, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', animation: 'slideUp 0.2s ease', color: C.text }}>
           <span>{toast.icon}</span><span>{toast.msg}</span>
