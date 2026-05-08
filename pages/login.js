@@ -169,7 +169,14 @@ export default function Login() {
         options: { shouldCreateUser: false },
       });
       if (otpErr) {
-        setError('Error al enviar el código. Intentá de nuevo.');
+        const msg = otpErr.message?.toLowerCase() ?? '';
+        if (msg.includes('rate limit') || msg.includes('too many') || msg.includes('after')) {
+          setError('Demasiados intentos. Esperá unos minutos y volvé a intentar.');
+        } else if (msg.includes('not found') || msg.includes('no user')) {
+          setError('No encontramos una cuenta con ese email.');
+        } else {
+          setError(otpErr.message || 'Error al enviar el código. Intentá de nuevo.');
+        }
         setLoading(false);
         return;
       }
