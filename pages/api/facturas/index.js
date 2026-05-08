@@ -36,7 +36,7 @@ export default async function handler(req, res) {
 
     const { data, error } = await supabase
       .from('facturas')
-      .insert(body)
+      .insert({ ...body, uploaded_by: user.id })
       .select()
       .single();
 

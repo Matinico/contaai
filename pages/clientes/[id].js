@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../lib/auth-context';
 import { authFetch } from '../../lib/auth-fetch';
+import { useRole } from '../../lib/use-role';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
@@ -78,7 +79,7 @@ function entryToDb(entry, libro, periodo, clienteId) {
 }
 
 function dbToEntry(row) {
-  const base = { id: row.id, fecha: row.fecha ?? '', tipo: row.tipo ?? 'B', nro: row.nro ?? '', concepto: row.concepto ?? '', categoria: row.categoria ?? 'otros', alicuota: Number(row.alicuota ?? 21), neto: Number(row.neto ?? 0), iva: Number(row.iva ?? 0), total: Number(row.total ?? 0), cae: '' };
+  const base = { id: row.id, uploaded_by: row.uploaded_by ?? null, fecha: row.fecha ?? '', tipo: row.tipo ?? 'B', nro: row.nro ?? '', concepto: row.concepto ?? '', categoria: row.categoria ?? 'otros', alicuota: Number(row.alicuota ?? 21), neto: Number(row.neto ?? 0), iva: Number(row.iva ?? 0), total: Number(row.total ?? 0), cae: '' };
   return row.libro === 'ventas'
     ? { ...base, cliente: row.proveedor ?? '', cuit_cli: row.cuit ?? '' }
     : { ...base, proveedor: row.proveedor ?? '', cuit: row.cuit ?? '', cuit_rec: '' };
@@ -86,6 +87,7 @@ function dbToEntry(row) {
 
 export default function ClienteDetalle() {
   const { user, signOut } = useAuth();
+  const { rol } = useRole({ redirectIfNoMembership: false });
   const router = useRouter();
   const { id } = router.query;
   const menuRef = useRef(null);
@@ -280,7 +282,11 @@ export default function ClienteDetalle() {
   const skipEntity     = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current(null); entityResolveRef.current = null; } };
   const handleDelete   = async (entryId, libro) => {
     const res = await authFetch(`/api/facturas/${entryId}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('⚠️', 'Error al eliminar', true); return; }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      showToast('⚠️', d.error || 'Error al eliminar', true);
+      return;
+    }
     if (libro === 'compras') setComprasEntries(x => x.filter(r => r.id !== entryId));
     else setVentasEntries(x => x.filter(r => r.id !== entryId));
   };
@@ -341,12 +347,16 @@ export default function ClienteDetalle() {
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{user?.email}</div>
               </div>
               <div style={{ padding: '6px 0' }}>
-                <Link href="/configuracion" onClick={() => setMenu(false)} className="menu-item"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1.06 1.06M11.24 11.24l1.06 1.06M2.7 12.3l1.06-1.06M11.24 3.76l1.06-1.06" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
-                  Configuración
-                </Link>
-                <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
+                {rol === 'admin' && (
+                  <>
+                    <Link href="/configuracion" onClick={() => setMenu(false)} className="menu-item"
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1.06 1.06M11.24 11.24l1.06 1.06M2.7 12.3l1.06-1.06M11.24 3.76l1.06-1.06" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
+                      Configuración
+                    </Link>
+                    <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
+                  </>
+                )}
                 <button onClick={() => signOut().then(() => router.replace('/login'))} className="menu-item"
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M10 11l3-3.5L10 4M13 7.5H5.5M5.5 2H2v11h3.5" stroke={C.red} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -636,8 +646,10 @@ export default function ClienteDetalle() {
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: isCompras ? C.green : C.red, whiteSpace: 'nowrap' }}>$ {fmt(e.iva)}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 700, whiteSpace: 'nowrap' }}>$ {fmt(e.total)}</td>
                               <td style={{ padding: '9px 8px' }}>
-                                <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
-                                  style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                {(rol === 'admin' || !e.uploaded_by || e.uploaded_by === user?.id) && (
+                                  <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
+                                    style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                )}
                               </td>
                             </tr>
                           ))}

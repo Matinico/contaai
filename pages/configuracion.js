@@ -80,7 +80,12 @@ export default function Configuracion() {
     try {
       const r = await authFetch('/api/configuracion');
       const d = await r.json();
-      if (!r.ok) { setDataLoading(false); return; }
+      if (!r.ok) {
+        if (r.status === 404) router.replace('/onboarding');
+        setDataLoading(false);
+        return;
+      }
+      if (d.rol === 'operador') { router.replace('/'); return; }
       setEstudioData(d.estudio);
       setMiembros(d.miembros || []);
       setRol(d.rol);

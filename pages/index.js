@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { authFetch } from '../lib/auth-fetch';
+import { useRole } from '../lib/use-role';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
@@ -31,6 +32,8 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const menuRef = useRef(null);
+
+  const { rol } = useRole({ redirectIfNoMembership: false });
 
   const [menu,            setMenu]            = useState(false);
   const [clientes,        setClientes]        = useState([]);
@@ -186,13 +189,17 @@ export default function Dashboard() {
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{user?.email}</div>
               </div>
               <div style={{ padding: '6px 0' }}>
-                <Link href="/configuracion" onClick={() => setMenu(false)}
-                  className="menu-item"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1.06 1.06M11.24 11.24l1.06 1.06M2.7 12.3l1.06-1.06M11.24 3.76l1.06-1.06" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
-                  Configuración
-                </Link>
-                <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
+                {rol === 'admin' && (
+                  <>
+                    <Link href="/configuracion" onClick={() => setMenu(false)}
+                      className="menu-item"
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="2.5" stroke={C.muted} strokeWidth="1.3"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.7 2.7l1.06 1.06M11.24 11.24l1.06 1.06M2.7 12.3l1.06-1.06M11.24 3.76l1.06-1.06" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round"/></svg>
+                      Configuración
+                    </Link>
+                    <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
+                  </>
+                )}
                 <button onClick={() => signOut().then(() => router.replace('/login'))}
                   className="menu-item"
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
@@ -229,11 +236,13 @@ export default function Dashboard() {
                 {loading ? '…' : `${clientes.length} cliente${clientes.length !== 1 ? 's' : ''}`}
               </p>
             </div>
-            <button onClick={openModal}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.navy, border: 'none', borderRadius: 7, padding: '8px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>
-              Nuevo cliente
-            </button>
+            {rol === 'admin' && (
+              <button onClick={openModal}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.navy, border: 'none', borderRadius: 7, padding: '8px 16px', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                Nuevo cliente
+              </button>
+            )}
           </div>
 
           {/* Table */}
