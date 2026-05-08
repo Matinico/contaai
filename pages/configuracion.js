@@ -23,14 +23,12 @@ const lbl  = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, 
 const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 14, outline: 'none', fontFamily: C.font };
 
 export default function Configuracion() {
-  const { user, signOut, supabase } = useAuth();
+  const { user, signOut } = useAuth();
   const router  = useRouter();
   const menuRef = useRef(null);
 
-  // UI state
   const [menu,        setMenu]        = useState(false);
   const [toast,       setToast]       = useState(null);
-  const [error,       setError]       = useState('');
 
   // Estudio + equipo
   const [estudioData, setEstudioData] = useState(null);
@@ -39,29 +37,18 @@ export default function Configuracion() {
   const [dataLoading, setDataLoading] = useState(true);
 
   // Edit estudio modal
-  const [editModal,   setEditModal]   = useState(false);
-  const [editForm,    setEditForm]    = useState({ nombre: '', cuit: '' });
-  const [editSaving,  setEditSaving]  = useState(false);
-  const [editError,   setEditError]   = useState('');
+  const [editModal,  setEditModal]  = useState(false);
+  const [editForm,   setEditForm]   = useState({ nombre: '', cuit: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError,  setEditError]  = useState('');
 
   // Invite modal
-  const [invModal,    setInvModal]    = useState(false);
-  const [invEmail,    setInvEmail]    = useState('');
-  const [invSaving,   setInvSaving]   = useState(false);
-  const [invError,    setInvError]    = useState('');
-  const [invLink,     setInvLink]     = useState('');
-
-  // 2FA state
-  const [factors,     setFactors]     = useState([]);
-  const [loadingF,    setLoadingF]    = useState(true);
-  const [enrolling,   setEnrolling]   = useState(false);
-  const [qrCode,      setQrCode]      = useState(null);
-  const [secret,      setSecret]      = useState(null);
-  const [factorId,    setFactorId]    = useState(null);
-  const [challengeId, setChallengeId] = useState(null);
-  const [verifyCode,  setVerifyCode]  = useState('');
-  const [unenrolling, setUnenrolling] = useState(false);
-  const [mfaError,    setMfaError]    = useState('');
+  const [invModal,  setInvModal]  = useState(false);
+  const [invEmail,  setInvEmail]  = useState('');
+  const [invSaving, setInvSaving] = useState(false);
+  const [invError,  setInvError]  = useState('');
+  const [invLink,   setInvLink]   = useState('');
+  const [copied,    setCopied]    = useState(false);
 
   useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
 
@@ -71,9 +58,7 @@ export default function Configuracion() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  useEffect(() => {
-    if (user) { loadData(); loadFactors(); }
-  }, [user]);
+  useEffect(() => { if (user) loadData(); }, [user]);
 
   async function loadData() {
     setDataLoading(true);
@@ -91,48 +76,6 @@ export default function Configuracion() {
       setRol(d.rol);
     } catch (_) {}
     setDataLoading(false);
-  }
-
-  // ── 2FA ──────────────────────────────────────────────────────────────────
-  async function loadFactors() {
-    setLoadingF(true);
-    const { data } = await supabase.auth.mfa.listFactors();
-    setFactors(data?.totp ?? []);
-    setLoadingF(false);
-  }
-
-  async function startEnroll() {
-    setMfaError('');
-    const { data, error: err } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
-    if (err) { setMfaError(err.message); return; }
-    const { data: chal, error: chalErr } = await supabase.auth.mfa.challenge({ factorId: data.id });
-    if (chalErr) { setMfaError(chalErr.message); return; }
-    setQrCode(data.totp.qr_code); setSecret(data.totp.secret);
-    setFactorId(data.id); setChallengeId(chal.id); setEnrolling(true);
-  }
-
-  async function confirmEnroll() {
-    setMfaError('');
-    const { error: err } = await supabase.auth.mfa.verify({
-      factorId, challengeId, code: verifyCode.replace(/\s/g, ''),
-    });
-    if (err) { setMfaError('Código incorrecto. Intentá de nuevo.'); return; }
-    setEnrolling(false); setQrCode(null); setSecret(null);
-    setFactorId(null); setChallengeId(null); setVerifyCode('');
-    showToast('2FA activado correctamente.'); loadFactors();
-  }
-
-  async function cancelEnroll() {
-    if (factorId) await supabase.auth.mfa.unenroll({ factorId });
-    setEnrolling(false); setQrCode(null); setSecret(null);
-    setFactorId(null); setChallengeId(null); setVerifyCode(''); setMfaError('');
-  }
-
-  async function unenroll(fId) {
-    setUnenrolling(true);
-    const { error: err } = await supabase.auth.mfa.unenroll({ factorId: fId });
-    if (err) { setMfaError(err.message); setUnenrolling(false); return; }
-    showToast('2FA desactivado.'); loadFactors(); setUnenrolling(false);
   }
 
   // ── Edit estudio ──────────────────────────────────────────────────────────
@@ -159,21 +102,27 @@ export default function Configuracion() {
 
   // ── Invite ────────────────────────────────────────────────────────────────
   function openInvite() {
-    setInvEmail(''); setInvError(''); setInvLink(''); setInvModal(true);
+    setInvEmail(''); setInvError(''); setInvLink(''); setCopied(false); setInvModal(true);
   }
 
-  async function sendInvite() {
-    setInvError(''); setInvLink('');
+  async function generateLink() {
+    setInvError(''); setInvLink(''); setCopied(false);
     if (!invEmail.trim()) { setInvError('El email es obligatorio.'); return; }
     setInvSaving(true);
     try {
       const r = await authFetch('/api/invitaciones', { method: 'POST', body: JSON.stringify({ email: invEmail }) });
       const d = await r.json();
-      if (!r.ok) { setInvError(d.error || 'Error al enviar.'); setInvSaving(false); return; }
-      if (!d.sent) setInvLink(d.link); // show link if email not sent
-      else { setInvModal(false); showToast(`Invitación enviada a ${invEmail}`); }
+      if (!r.ok) { setInvError(d.error || 'Error al generar el link.'); setInvSaving(false); return; }
+      setInvLink(d.link);
     } catch { setInvError('Error de conexión.'); }
     setInvSaving(false);
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(invLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   // ── Utils ─────────────────────────────────────────────────────────────────
@@ -182,13 +131,11 @@ export default function Configuracion() {
   }
 
   const initials = (user?.user_metadata?.name || user?.email || 'U').slice(0, 2).toUpperCase();
+  const isAdmin  = rol === 'admin';
 
   if (user === undefined || user === null) {
     return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
   }
-
-  const verified2FA = factors.filter(f => f.status === 'verified');
-  const isAdmin = rol === 'admin';
 
   return (
     <>
@@ -261,15 +208,6 @@ export default function Configuracion() {
           <span style={{ color: C.border }}>›</span>
           <span style={{ color: C.text, fontWeight: 600 }}>Configuración</span>
         </div>
-
-        {/* ── Access denied for operadores ── */}
-        {!dataLoading && rol === 'operador' && (
-          <div style={{ ...card, padding: 32, textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 6 }}>Acceso restringido</div>
-            <div style={{ fontSize: 14, color: C.muted }}>Solo el admin del estudio puede acceder a esta sección.</div>
-          </div>
-        )}
 
         {/* ── Mi estudio (admin only) ── */}
         {isAdmin && (
@@ -354,7 +292,7 @@ export default function Configuracion() {
         )}
 
         {/* ── Información de cuenta ── */}
-        <section style={{ marginBottom: 20 }}>
+        <section>
           <div style={{ ...card, padding: '24px' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 16 }}>Información de cuenta</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -375,87 +313,6 @@ export default function Configuracion() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
-
-        {/* ── 2FA ── */}
-        <section>
-          <div style={{ ...card, padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Verificación en dos pasos (2FA)</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>Protegé tu cuenta con Google Authenticator, Authy u otra app TOTP</div>
-              </div>
-              {!loadingF && (
-                <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: verified2FA.length > 0 ? '#dcfce7' : '#f1f5f9', color: verified2FA.length > 0 ? C.green : C.muted }}>
-                  {verified2FA.length > 0 ? 'Activado' : 'Desactivado'}
-                </span>
-              )}
-            </div>
-
-            {loadingF ? (
-              <div style={{ color: C.muted, fontSize: 13 }}>Cargando…</div>
-            ) : enrolling ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <div style={{ background: '#e8f3fd', border: `1px solid ${C.border}`, borderRadius: 10, padding: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 12 }}>1. Escaneá este código QR con tu app</div>
-                  {qrCode && <img src={qrCode} alt="QR 2FA" style={{ display: 'block', width: 180, height: 180, margin: '0 auto 12px', borderRadius: 8 }} />}
-                  {secret && (
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>O ingresá el código manual:</div>
-                      <code style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 12px', fontSize: 13, letterSpacing: '0.08em', color: C.navy, fontWeight: 700 }}>{secret}</code>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 10 }}>2. Ingresá el código de 6 dígitos para confirmar</div>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={lbl}>Código TOTP</label>
-                      <input value={verifyCode} onChange={e => setVerifyCode(e.target.value)}
-                        placeholder="123 456" maxLength={7} style={inp} autoFocus />
-                    </div>
-                    <button onClick={confirmEnroll}
-                      style={{ padding: '9px 20px', background: C.navy, color: 'white', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      Verificar y activar
-                    </button>
-                  </div>
-                  {mfaError && <div style={{ marginTop: 10, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '9px 14px', fontSize: 13, color: C.red }}>{mfaError}</div>}
-                </div>
-                <button onClick={cancelEnroll}
-                  style={{ alignSelf: 'flex-start', background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '7px 16px', fontSize: 13, color: C.muted, cursor: 'pointer' }}>
-                  Cancelar
-                </button>
-              </div>
-            ) : verified2FA.length > 0 ? (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                  <div style={{ width: 38, height: 38, background: '#dcfce7', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9l4 4 6-7" stroke={C.green} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Autenticador TOTP configurado</div>
-                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Tu cuenta está protegida con 2FA</div>
-                  </div>
-                </div>
-                {mfaError && <div style={{ marginBottom: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '9px 14px', fontSize: 13, color: C.red }}>{mfaError}</div>}
-                <button onClick={() => unenroll(verified2FA[0].id)} disabled={unenrolling}
-                  style={{ padding: '8px 18px', background: 'none', border: '1px solid #fecaca', borderRadius: 7, fontSize: 13, color: C.red, fontWeight: 600, cursor: unenrolling ? 'not-allowed' : 'pointer', opacity: unenrolling ? 0.6 : 1 }}>
-                  {unenrolling ? 'Desactivando…' : 'Desactivar 2FA'}
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
-                  Con el 2FA activado necesitás un código de tu app de autenticación cada vez que iniciés sesión.
-                </p>
-                {mfaError && <div style={{ marginBottom: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '9px 14px', fontSize: 13, color: C.red }}>{mfaError}</div>}
-                <button onClick={startEnroll}
-                  style={{ padding: '9px 20px', background: C.navy, color: 'white', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                  Activar 2FA
-                </button>
-              </div>
-            )}
           </div>
         </section>
       </main>
@@ -491,36 +348,74 @@ export default function Configuracion() {
 
       {/* ── MODAL: invitar empleado ── */}
       {invModal && (
-        <div onClick={() => setInvModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 14, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', animation: 'slideUp 0.2s ease' }}>
+        <div onClick={() => !invLink && setInvModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 14, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.18)', animation: 'slideUp 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: `1px solid ${C.border}` }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Invitar empleado</div>
               <button onClick={() => setInvModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, lineHeight: 1 }}>✕</button>
             </div>
+
             <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
-                Le llegará un email con un link para unirse al estudio como <strong>operador</strong>.
-              </p>
-              <div>
-                <label style={lbl}>Email del empleado <span style={{ color: C.red }}>*</span></label>
-                <input value={invEmail} onChange={e => setInvEmail(e.target.value)}
-                  type="email" placeholder="empleado@empresa.com" style={inp} autoFocus
-                  onKeyDown={e => e.key === 'Enter' && sendInvite()} />
-              </div>
-              {invError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '9px 14px', fontSize: 13, color: C.red }}>{invError}</div>}
-              {invLink && (
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 7, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: C.green, marginBottom: 6 }}>Email no enviado — copiá el link manualmente:</div>
-                  <div style={{ fontSize: 11, color: C.text, wordBreak: 'break-all', fontFamily: "'Courier New',monospace", background: C.white, padding: '6px 10px', borderRadius: 5, border: `1px solid ${C.border}` }}>{invLink}</div>
-                </div>
+              {!invLink ? (
+                <>
+                  <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
+                    Ingresá el email del empleado para generar su link de invitación.
+                    Después lo podés mandar por WhatsApp o cualquier otro medio.
+                  </p>
+                  <div>
+                    <label style={lbl}>Email del empleado <span style={{ color: C.red }}>*</span></label>
+                    <input value={invEmail} onChange={e => setInvEmail(e.target.value)}
+                      type="email" placeholder="empleado@empresa.com" style={inp} autoFocus
+                      onKeyDown={e => e.key === 'Enter' && generateLink()} />
+                  </div>
+                  {invError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '9px 14px', fontSize: 13, color: C.red }}>{invError}</div>}
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: 44, height: 44, background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 7-8" stroke={C.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 4 }}>Link generado</div>
+                    <div style={{ fontSize: 12, color: C.muted }}>Copiá el link y mandáselo al empleado</div>
+                  </div>
+
+                  <div style={{ background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Link de invitación</div>
+                    <div style={{ fontSize: 12, color: C.text, wordBreak: 'break-all', fontFamily: "'Courier New',monospace", lineHeight: 1.5 }}>{invLink}</div>
+                  </div>
+
+                  <button onClick={copyLink}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px', background: copied ? '#dcfce7' : C.navy, color: copied ? C.green : 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    {copied ? (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-6" stroke={C.green} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        ¡Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="5" y="1" width="9" height="11" rx="1.5" stroke="white" strokeWidth="1.4"/><rect x="2" y="4" width="9" height="11" rx="1.5" stroke="white" strokeWidth="1.4" fill="none"/></svg>
+                        Copiar link
+                      </>
+                    )}
+                  </button>
+
+                  <button onClick={() => { setInvLink(''); setInvEmail(''); setCopied(false); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.muted, textDecoration: 'underline', textAlign: 'center' }}>
+                    Generar otro link
+                  </button>
+                </>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px', borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => setInvModal(false)} style={{ background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 18px', fontSize: 13, color: C.muted, cursor: 'pointer', fontWeight: 500 }}>Cancelar</button>
-              <button onClick={sendInvite} disabled={invSaving} style={{ background: invSaving ? '#94a3b8' : C.navy, border: 'none', borderRadius: 7, padding: '8px 22px', fontSize: 13, color: 'white', fontWeight: 600, cursor: invSaving ? 'not-allowed' : 'pointer' }}>
-                {invSaving ? 'Enviando…' : 'Enviar invitación'}
-              </button>
-            </div>
+
+            {!invLink && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 24px', borderTop: `1px solid ${C.border}` }}>
+                <button onClick={() => setInvModal(false)} style={{ background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 18px', fontSize: 13, color: C.muted, cursor: 'pointer', fontWeight: 500 }}>Cancelar</button>
+                <button onClick={generateLink} disabled={invSaving} style={{ background: invSaving ? '#94a3b8' : C.navy, border: 'none', borderRadius: 7, padding: '8px 22px', fontSize: 13, color: 'white', fontWeight: 600, cursor: invSaving ? 'not-allowed' : 'pointer' }}>
+                  {invSaving ? 'Generando…' : 'Generar link'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
