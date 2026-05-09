@@ -118,6 +118,58 @@ function exportTXT(compras, period) {
   a.click();
 }
 
+function exportPDF(entries, tipo, period, clienteNombre) {
+  const fmtN = n => (Number(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const isC = tipo === 'compras';
+  const cols = isC
+    ? ['Fecha','Comprobante','Proveedor','CUIT','Concepto','Cat.','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Neto 27%','IVA 27%','No Grav.','Exento','Total']
+    : ['Fecha','Comprobante','Cliente','CUIT','Concepto','Cat.','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Total'];
+  const rows = entries.map(e => {
+    const ali = Number(e.alicuota);
+    const n21 = ali===21?e.neto:0, i21=ali===21?e.iva:0;
+    const n105=ali===10.5?e.neto:0, i105=ali===10.5?e.iva:0;
+    const n27 =ali===27?e.neto:0,  i27 =ali===27?e.iva:0;
+    const noG =ali===0?e.neto:0;
+    const cells = isC
+      ? [e.fecha,`F${e.tipo} ${e.nro}`,e.proveedor||'',e.cuit||'',e.concepto||'',CATEGORIES[e.categoria]?.label||e.categoria,fmtN(n21),fmtN(i21),fmtN(n105),fmtN(i105),fmtN(n27),fmtN(i27),fmtN(noG),fmtN(0),fmtN(e.total)]
+      : [e.fecha,`F${e.tipo} ${e.nro}`,e.cliente||'',e.cuit_cli||'',e.concepto||'',CATEGORIES[e.categoria]?.label||e.categoria,fmtN(n21),fmtN(i21),fmtN(n105),fmtN(i105),fmtN(e.total)];
+    return `<tr>${cells.map(c=>`<td>${String(c).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td>`).join('')}</tr>`;
+  }).join('');
+  const sum = (f,fn) => entries.filter(f).reduce((s,e)=>s+fn(e),0);
+  const totCells = isC
+    ? ['','','','','','TOTAL',fmtN(sum(e=>e.alicuota===21,e=>e.neto)),fmtN(sum(e=>e.alicuota===21,e=>e.iva)),fmtN(sum(e=>e.alicuota===10.5,e=>e.neto)),fmtN(sum(e=>e.alicuota===10.5,e=>e.iva)),fmtN(sum(e=>e.alicuota===27,e=>e.neto)),fmtN(sum(e=>e.alicuota===27,e=>e.iva)),fmtN(sum(e=>e.alicuota===0,e=>e.neto)),fmtN(0),fmtN(sum(()=>true,e=>e.total))]
+    : ['','','','','','TOTAL',fmtN(sum(e=>e.alicuota===21,e=>e.neto)),fmtN(sum(e=>e.alicuota===21,e=>e.iva)),fmtN(sum(e=>e.alicuota===10.5,e=>e.neto)),fmtN(sum(e=>e.alicuota===10.5,e=>e.iva)),fmtN(sum(()=>true,e=>e.total))];
+  const totRow = `<tr class="tot">${totCells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+  const title = isC ? 'Libro IVA Compras' : 'Libro IVA Ventas';
+  const numCols = cols.length;
+  const rightFrom = isC ? 7 : 7;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${title} — ${clienteNombre} — ${period}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,sans-serif;font-size:9.5px;color:#1e293b;padding:18px;}
+h1{font-size:15px;color:#1a3a5c;margin-bottom:3px;}
+.sub{font-size:11px;color:#64748b;margin-bottom:14px;}
+table{width:100%;border-collapse:collapse;}
+th{background:#1a3a5c;color:white;padding:5px 5px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+td{padding:3.5px 5px;border-bottom:1px solid #e2e8f0;}
+tbody tr:hover td{background:#f8fafc;}
+.tot td{font-weight:700;background:#f1f5f9;border-top:2px solid #1a3a5c;}
+th:nth-child(n+${rightFrom}),td:nth-child(n+${rightFrom}){text-align:right;font-family:'Courier New',monospace;}
+@media print{body{padding:8px;}@page{size:landscape;margin:8mm;}}
+</style></head><body>
+<h1>${title} — ${clienteNombre}</h1>
+<div class="sub">Período: ${period} &nbsp;·&nbsp; ${entries.length} comprobante${entries.length!==1?'s':''}</div>
+<table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+<tbody>${rows}${totRow}</tbody></table>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 400);
+}
+
 function calcBreakdown(neto, iva, alicuota) {
   const ali = Number(alicuota);
   return {
@@ -561,8 +613,8 @@ export default function ClienteDetalle() {
                   </div>
                   <div style={{ fontSize: 22, color: C.muted, padding: '0 12px', fontWeight: 300 }}>=</div>
                   <div style={{ textAlign: 'center', flex: 1, minWidth: 140, background: saldoIva > 0 ? '#fef2f2' : saldoIva < 0 ? '#f0fdf4' : '#f8fafc', borderRadius: 10, padding: '10px 16px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                      {saldoIva > 0 ? 'Saldo a pagar' : saldoIva < 0 ? 'Saldo a favor' : 'Saldo'}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                      {saldoIva > 0 ? 'Saldo técnico a favor de ARCA' : saldoIva < 0 ? 'Saldo técnico a favor del contribuyente' : 'Saldo'}
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 800, color: saldoIva > 0 ? C.red : saldoIva < 0 ? C.green : C.muted, fontFamily: C.mono }}>
                       $ {fmt(Math.abs(saldoIva))}
@@ -703,6 +755,12 @@ export default function ClienteDetalle() {
                           </button>
                           <button onClick={() => exportTXT(comprasEntries, period)} style={{padding:'7px 14px', background:'#1a3a5c', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', fontWeight:'600', cursor:'pointer'}}>
                             Exportar TXT ARCA
+                          </button>
+                          <button onClick={() => exportPDF(comprasEntries, 'compras', period, cliente?.nombre || 'cliente')} style={{padding:'7px 14px', background:'none', border:`1.5px solid ${C.border}`, borderRadius:'8px', fontSize:'12px', fontWeight:'600', color:C.navy, cursor:'pointer'}}>
+                            PDF Compras
+                          </button>
+                          <button onClick={() => exportPDF(ventasEntries, 'ventas', period, cliente?.nombre || 'cliente')} style={{padding:'7px 14px', background:'none', border:`1.5px solid ${C.border}`, borderRadius:'8px', fontSize:'12px', fontWeight:'600', color:C.navy, cursor:'pointer'}}>
+                            PDF Ventas
                           </button>
                         </div>
                       </div>
