@@ -17,7 +17,7 @@ const PROMPT = `Analizá esta factura o comprobante argentino y devolvé ÚNICAM
   "fecha": "DD/MM/AAAA",
   "tipo_comprobante": "A" | "B" | "C" | "M",
   "nro_comprobante": "0001-00000001",
-  "proveedor": "Razón social del emisor",
+  "proveedor": "Nombre legal exacto del emisor (quien firma y emite la factura). Solo la razón social del proveedor, sin incluir datos del receptor ni información adicional.",
   "cuit_proveedor": "20-12345678-9",
   "cuit_receptor": "20-12345678-9",
   "concepto": "Descripción breve del bien o servicio",

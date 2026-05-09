@@ -74,6 +74,64 @@ function exportXLS(compras, ventas, period, clienteNombre) {
   a.click();
 }
 
+function exportTXT(compras, period) {
+  if (!compras.length) return;
+  const arcaCod = { A: '001', B: '006', C: '011', M: '051' };
+  const fmtAmt  = n => (Number(n) || 0).toFixed(2);
+  const lines = compras.map(e => {
+    let fecha = e.fecha || '';
+    if (fecha.includes('-')) { fecha = fecha.replace(/-/g, ''); }
+    else if (fecha.includes('/')) { const p = fecha.split('/'); fecha = p[2] + p[1] + p[0]; }
+    const cod = arcaCod[e.tipo] || '006';
+    let ptoVenta = '0000', nroComp = '00000000';
+    if (e.nro && e.nro.includes('-')) {
+      const p = e.nro.split('-');
+      ptoVenta = (p[0] || '').padStart(4, '0').slice(-4);
+      nroComp  = (p[1] || '').padStart(8, '0').slice(-8);
+    } else if (e.nro) {
+      nroComp = String(e.nro).padStart(8, '0').slice(-8);
+    }
+    const ali    = Number(e.alicuota);
+    const neto21  = ali === 21   ? e.neto : 0;
+    const neto105 = ali === 10.5 ? e.neto : 0;
+    const neto27  = ali === 27   ? e.neto : 0;
+    const noGrav  = ali === 0    ? e.neto : 0;
+    const iva21   = ali === 21   ? e.iva : 0;
+    const iva105  = ali === 10.5 ? e.iva : 0;
+    const iva27   = ali === 27   ? e.iva : 0;
+    const cuit    = (e.cuit || '').replace(/-/g, '');
+    const cuitRec = (e.cuit_rec || '').replace(/-/g, '');
+    return [
+      fecha, cod, ptoVenta, nroComp,
+      '80', cuit, e.proveedor || '',
+      fmtAmt(e.total),
+      fmtAmt(neto21), fmtAmt(neto105), fmtAmt(neto27),
+      fmtAmt(noGrav), fmtAmt(0),
+      fmtAmt(iva21), fmtAmt(iva105), fmtAmt(iva27),
+      'PES',
+    ].join('|');
+  });
+  const [mm, yyyy] = period.split('/');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
+  a.download = `IVA_Compras_${yyyy}${mm}.txt`;
+  a.click();
+}
+
+function calcBreakdown(neto, iva, alicuota) {
+  const ali = Number(alicuota);
+  return {
+    neto21:  ali === 21   ? neto : 0,
+    iva21:   ali === 21   ? iva  : 0,
+    neto105: ali === 10.5 ? neto : 0,
+    iva105:  ali === 10.5 ? iva  : 0,
+    neto27:  ali === 27   ? neto : 0,
+    iva27:   ali === 27   ? iva  : 0,
+    noGrav:  ali === 0    ? neto : 0,
+    exento:  0,
+  };
+}
+
 function entryToDb(entry, libro, periodo, clienteId) {
   return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total };
 }
@@ -120,6 +178,7 @@ export default function ClienteDetalle() {
   const [dbLoading,      setDbLoading]      = useState(false);
   const [entityModal,    setEntityModal]    = useState(null);
   const [entityForm,     setEntityForm]     = useState({ nombre: '' });
+  const [editingId,      setEditingId]      = useState(null);
 
   useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
 
@@ -189,23 +248,23 @@ export default function ClienteDetalle() {
   }, []);
 
   const buildComprasForm = d => {
-    if (!d) return { fecha: '', tipo: 'B', nro: '', proveedor: '', cuit: '', cuit_rec: '', concepto: '', categoria: 'otros', alicuota: 21, total: 0, neto: 0, iva: 0, cae: '', confianza: 0 };
+    if (!d) return { fecha: '', tipo: 'B', nro: '', proveedor: '', cuit: '', cuit_rec: '', concepto: '', categoria: 'otros', alicuota: 21, total: 0, neto: 0, iva: 0, cae: '', confianza: 0, ...calcBreakdown(0, 0, 21) };
     const catKey = d.categoria || 'otros', alicuota = d.alicuota ?? CATEGORIES[catKey]?.alicuota ?? 21, total = d.total || 0;
     let neto = d.neto || 0, iva = d.iva || 0;
     if (d.tipo_comprobante === 'C') { neto = total; iva = 0; }
     else if (!d.iva_discriminado && iva && total) { neto = total - iva; }
     else if (!d.iva_discriminado && alicuota > 0 && total) { neto = total / (1 + alicuota / 100); iva = total - neto; }
-    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', proveedor: d.proveedor || '', cuit: d.cuit_proveedor || '', cuit_rec: d.cuit_receptor || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0 };
+    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', proveedor: d.proveedor || '', cuit: d.cuit_proveedor || '', cuit_rec: d.cuit_receptor || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0, ...calcBreakdown(neto, iva, alicuota) };
   };
 
   const buildVentasForm = d => {
-    if (!d) return { fecha: '', tipo: 'B', nro: '', cliente: '', cuit_cli: '', concepto: '', categoria: 'otros', alicuota: 21, total: 0, neto: 0, iva: 0, cae: '', confianza: 0 };
+    if (!d) return { fecha: '', tipo: 'B', nro: '', cliente: '', cuit_cli: '', concepto: '', categoria: 'otros', alicuota: 21, total: 0, neto: 0, iva: 0, cae: '', confianza: 0, ...calcBreakdown(0, 0, 21) };
     const catKey = d.categoria || 'otros', alicuota = d.alicuota ?? CATEGORIES[catKey]?.alicuota ?? 21, total = d.total || 0;
     let neto = d.neto || 0, iva = d.iva || 0;
     if (d.tipo_comprobante === 'C') { neto = total; iva = 0; }
     else if (!d.iva_discriminado && iva && total) { neto = total - iva; }
     else if (!d.iva_discriminado && alicuota > 0 && total) { neto = total / (1 + alicuota / 100); iva = total - neto; }
-    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', cliente: d.cliente || '', cuit_cli: d.cuit_cliente || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0 };
+    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', cliente: d.cliente || '', cuit_cli: d.cuit_cliente || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0, ...calcBreakdown(neto, iva, alicuota) };
   };
 
   const processQueue = async mode => {
@@ -259,25 +318,82 @@ export default function ClienteDetalle() {
   const updateForm = (key, val) => {
     setForm(f => {
       const u = { ...f, [key]: val };
-      if (key === 'categoria') { u.alicuota = CATEGORIES[val]?.alicuota ?? 21; if (u.total > 0) { u.neto = u.total / (1 + u.alicuota / 100); u.iva = u.total - u.neto; } }
-      if (key === 'alicuota' || key === 'total') { const a = parseFloat(key === 'alicuota' ? val : u.alicuota) || 0, t = parseFloat(key === 'total' ? val : u.total) || 0; if (u.tipo === 'C' || a === 0) { u.neto = t; u.iva = 0; } else { u.neto = t / (1 + a / 100); u.iva = t - u.neto; } }
-      if (key === 'neto') { const n = parseFloat(val) || 0, a = parseFloat(u.alicuota) || 0; u.iva = n * a / 100; u.total = n + u.iva; }
-      if (key === 'tipo' && val === 'C') { u.alicuota = 0; u.iva = 0; u.neto = u.total; }
+      const BREAKDOWN_KEYS = ['neto21','iva21','neto105','iva105','neto27','iva27','noGrav','exento'];
+      if (BREAKDOWN_KEYS.includes(key)) {
+        if (key === 'neto21')  u.iva21  = Math.round((parseFloat(val)||0) * 0.21  * 100) / 100;
+        if (key === 'neto105') u.iva105 = Math.round((parseFloat(val)||0) * 0.105 * 100) / 100;
+        if (key === 'neto27')  u.iva27  = Math.round((parseFloat(val)||0) * 0.27  * 100) / 100;
+        u.neto  = (parseFloat(u.neto21)||0)+(parseFloat(u.neto105)||0)+(parseFloat(u.neto27)||0)+(parseFloat(u.noGrav)||0)+(parseFloat(u.exento)||0);
+        u.iva   = (parseFloat(u.iva21)||0)+(parseFloat(u.iva105)||0)+(parseFloat(u.iva27)||0);
+        u.total = u.neto + u.iva;
+        return u;
+      }
+      if (key === 'categoria') {
+        u.alicuota = CATEGORIES[val]?.alicuota ?? 21;
+        if (u.total > 0) { const a = u.alicuota; if (u.tipo === 'C' || a === 0) { u.neto = u.total; u.iva = 0; } else { u.neto = u.total / (1 + a/100); u.iva = u.total - u.neto; } }
+        Object.assign(u, calcBreakdown(u.neto, u.iva, u.alicuota));
+      }
+      if (key === 'alicuota') { const a = parseFloat(val)||0, t = parseFloat(u.total)||0; if (u.tipo === 'C' || a === 0) { u.neto = t; u.iva = 0; } else { u.neto = t/(1+a/100); u.iva = t-u.neto; } Object.assign(u, calcBreakdown(u.neto, u.iva, a)); }
+      if (key === 'total') { const a = parseFloat(u.alicuota)||0, t = parseFloat(val)||0; if (u.tipo === 'C' || a === 0) { u.neto = t; u.iva = 0; } else { u.neto = t/(1+a/100); u.iva = t-u.neto; } Object.assign(u, calcBreakdown(u.neto, u.iva, u.alicuota)); }
+      if (key === 'neto') { const n = parseFloat(val)||0, a = parseFloat(u.alicuota)||0; u.iva = n*a/100; u.total = n+u.iva; Object.assign(u, calcBreakdown(n, u.iva, u.alicuota)); }
+      if (key === 'iva') { u.total = (parseFloat(u.neto)||0)+(parseFloat(val)||0); Object.assign(u, calcBreakdown(u.neto, parseFloat(val)||0, u.alicuota)); }
+      if (key === 'tipo' && val === 'C') { u.alicuota = 0; u.iva = 0; u.neto = parseFloat(u.total)||0; Object.assign(u, calcBreakdown(u.neto, 0, 0)); }
       return u;
     });
   };
 
-  const confirmEntry = () => {
-    const isV = modal?.mode === 'ventas';
-    const entry = isV
-      ? { id: Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: parseFloat(form.neto) || 0, iva: parseFloat(form.iva) || 0, total: parseFloat(form.total) || 0, cae: form.cae }
-      : { id: Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: form.cuit_rec, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: parseFloat(form.neto) || 0, iva: parseFloat(form.iva) || 0, total: parseFloat(form.total) || 0, cae: form.cae };
-    setModal(null);
-    if (resolveRef.current) { resolveRef.current(entry); resolveRef.current = null; }
-    showToast('✓', (isV ? entry.cliente : entry.proveedor) || 'Comprobante guardado');
+  const openManualModal = () => {
+    setEditingId(null);
+    const mode = activeTab;
+    setModal({ file: null, data: null, mode, manual: true });
+    setForm(mode === 'compras' ? buildComprasForm(null) : buildVentasForm(null));
   };
 
-  const cancelModal    = () => { setModal(null); if (resolveRef.current) { resolveRef.current(null); resolveRef.current = null; } };
+  const openEditModal = entry => {
+    const mode = isCompras ? 'compras' : 'ventas';
+    const base = { fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, total: entry.total, neto: entry.neto, iva: entry.iva, cae: entry.cae || '', confianza: 0, ...calcBreakdown(entry.neto, entry.iva, entry.alicuota) };
+    const formData = isCompras
+      ? { ...base, proveedor: entry.proveedor, cuit: entry.cuit, cuit_rec: entry.cuit_rec || '' }
+      : { ...base, cliente: entry.cliente, cuit_cli: entry.cuit_cli };
+    setEditingId(entry.id);
+    setModal({ file: null, data: null, mode, edit: true });
+    setForm(formData);
+  };
+
+  const confirmEntry = async () => {
+    const isV = modal?.mode === 'ventas';
+    const libro = modal?.mode;
+    const netoFinal = (parseFloat(form.neto21)||0)+(parseFloat(form.neto105)||0)+(parseFloat(form.neto27)||0)+(parseFloat(form.noGrav)||0)+(parseFloat(form.exento)||0) || parseFloat(form.neto)||0;
+    const ivaFinal  = (parseFloat(form.iva21)||0)+(parseFloat(form.iva105)||0)+(parseFloat(form.iva27)||0) || parseFloat(form.iva)||0;
+    const entry = isV
+      ? { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae }
+      : { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: form.cuit_rec, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae };
+    if (modal?.manual || modal?.edit) {
+      const setE = libro === 'compras' ? setComprasEntries : setVentasEntries;
+      setModal(null); setEditingId(null);
+      try {
+        if (modal?.edit && editingId) {
+          const res = await authFetch(`/api/facturas/${editingId}`, { method: 'PATCH', body: JSON.stringify(entryToDb(entry, libro, period, id)) });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error);
+          setE(prev => prev.map(e => e.id === editingId ? dbToEntry({ ...json.data, libro }) : e));
+          showToast('✓', 'Comprobante actualizado');
+        } else {
+          const res = await authFetch('/api/facturas', { method: 'POST', body: JSON.stringify({ ...entryToDb(entry, libro, period, id), cuit_entidad: null }) });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error);
+          setE(prev => [...prev, dbToEntry(json.data)]);
+          showToast('✓', (isV ? entry.cliente : entry.proveedor) || 'Comprobante guardado');
+        }
+      } catch (err) { showToast('⚠️', 'Error: ' + err.message, true); }
+    } else {
+      setModal(null);
+      if (resolveRef.current) { resolveRef.current(entry); resolveRef.current = null; }
+      showToast('✓', (isV ? entry.cliente : entry.proveedor) || 'Comprobante guardado');
+    }
+  };
+
+  const cancelModal    = () => { setModal(null); setEditingId(null); if (resolveRef.current) { resolveRef.current(null); resolveRef.current = null; } };
   const confirmEntity  = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current({ nombre: entityForm.nombre }); entityResolveRef.current = null; } };
   const skipEntity     = () => { setEntityModal(null); if (entityResolveRef.current) { entityResolveRef.current(null); entityResolveRef.current = null; } };
   const handleDelete   = async (entryId, libro) => {
@@ -541,6 +657,10 @@ export default function ClienteDetalle() {
                       style={{ width: '100%', marginTop: 12, padding: '10px', background: C.navy, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: (processing || !queue.some(q => q.status === 'pending')) ? 0.4 : 1, transition: 'opacity 0.15s' }}>
                       {processing ? 'Procesando…' : 'Procesar con IA'}
                     </button>
+                    <button onClick={openManualModal}
+                      style={{ width: '100%', marginTop: 7, padding: '9px', background: 'none', color: C.navy, border: `1.5px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      + Cargar manualmente
+                    </button>
 
                     <div style={{ marginTop: 14, padding: '10px 12px', background: '#fafbfc', border: `1px solid ${C.border}`, borderRadius: 8 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Alícuotas IVA</div>
@@ -581,6 +701,9 @@ export default function ClienteDetalle() {
                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 10v2h10v-2" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             Exportar Excel
                           </button>
+                          <button onClick={() => exportTXT(comprasEntries, period)} style={{padding:'7px 14px', background:'#1a3a5c', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', fontWeight:'600', cursor:'pointer'}}>
+                            Exportar TXT ARCA
+                          </button>
                         </div>
                       </div>
                       {/* Date filters */}
@@ -611,18 +734,18 @@ export default function ClienteDetalle() {
                         <thead>
                           <tr style={{ background: '#f8f9fb', borderBottom: `1px solid ${C.border}` }}>
                             {(isCompras
-                              ? ['#', 'Fecha', 'Comprobante', 'Proveedor', 'CUIT', 'Concepto', 'Cat.', 'Alíc.', 'Neto', 'IVA CF', 'Total', '']
-                              : ['#', 'Fecha', 'Comprobante', 'Cliente', 'CUIT', 'Concepto', 'Cat.', 'Alíc.', 'Neto', 'IVA DF', 'Total', '']
+                              ? ['#', 'Fecha', 'Comprobante', 'Proveedor', 'CUIT', 'Concepto', 'Cat.', 'Alíc.', 'Neto', 'No Grav.', 'Exento', 'IVA CF', 'Total', '']
+                              : ['#', 'Fecha', 'Comprobante', 'Cliente', 'CUIT', 'Concepto', 'Cat.', 'Alíc.', 'Neto', 'No Grav.', 'Exento', 'IVA DF', 'Total', '']
                             ).map(h => (
-                              <th key={h} style={{ padding: '9px 10px', textAlign: ['Neto', 'IVA CF', 'IVA DF', 'Total'].includes(h) ? 'right' : 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.muted, whiteSpace: 'nowrap' }}>{h}</th>
+                              <th key={h} style={{ padding: '9px 10px', textAlign: ['Neto', 'No Grav.', 'Exento', 'IVA CF', 'IVA DF', 'Total'].includes(h) ? 'right' : 'left', fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.muted, whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {dbLoading ? (
-                            <tr><td colSpan={12} style={{ padding: '40px', textAlign: 'center', color: C.muted, fontSize: 13 }}>Cargando…</td></tr>
+                            <tr><td colSpan={14} style={{ padding: '40px', textAlign: 'center', color: C.muted, fontSize: 13 }}>Cargando…</td></tr>
                           ) : filtered.length === 0 ? (
-                            <tr><td colSpan={12} style={{ padding: '48px', textAlign: 'center', color: C.muted }}>
+                            <tr><td colSpan={14} style={{ padding: '48px', textAlign: 'center', color: C.muted }}>
                               <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
                               <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>{entries.length > 0 ? 'Sin resultados' : 'Listo para procesar'}</div>
                               <div style={{ fontSize: 12 }}>{entries.length > 0 ? 'Cambiá los filtros' : 'Cargá facturas y presioná Procesar con IA'}</div>
@@ -642,14 +765,22 @@ export default function ClienteDetalle() {
                               <td style={{ padding: '9px 10px', textAlign: 'center' }}>
                                 <span style={{ fontFamily: C.mono, fontSize: 11, background: '#e8f3fd', color: C.navy, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>{e.alicuota}%</span>
                               </td>
-                              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 500, whiteSpace: 'nowrap' }}>$ {fmt(e.neto)}</td>
+                              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 500, whiteSpace: 'nowrap' }}>$ {fmt(e.alicuota > 0 ? e.neto : 0)}</td>
+                              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: C.muted, whiteSpace: 'nowrap', fontSize: 11 }}>$ {fmt(e.alicuota === 0 ? e.neto : 0)}</td>
+                              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: C.muted, whiteSpace: 'nowrap', fontSize: 11 }}>$ {fmt(0)}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: isCompras ? C.green : C.red, whiteSpace: 'nowrap' }}>$ {fmt(e.iva)}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 700, whiteSpace: 'nowrap' }}>$ {fmt(e.total)}</td>
                               <td style={{ padding: '9px 8px' }}>
-                                {(rol === 'admin' || !e.uploaded_by || e.uploaded_by === user?.id) && (
-                                  <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
-                                    style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                                )}
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  {(rol === 'admin' || !e.uploaded_by || e.uploaded_by === user?.id) && (
+                                    <>
+                                      <button onClick={() => openEditModal(e)}
+                                        style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Editar">✎</button>
+                                      <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
+                                        style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Eliminar">✕</button>
+                                    </>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -685,17 +816,23 @@ export default function ClienteDetalle() {
         <div onClick={cancelModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.navy, borderRadius: '12px 12px 0 0' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{isVentasModal ? 'Revisar factura de venta' : 'Revisar factura de compra'}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>
+                {modal?.edit ? 'Editar comprobante' : modal?.manual ? (isVentasModal ? 'Nueva factura de venta' : 'Nueva factura de compra') : (isVentasModal ? 'Revisar factura de venta' : 'Revisar factura de compra')}
+              </span>
               <button onClick={cancelModal} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: 'white', fontSize: 14 }}>✕</button>
             </div>
             <div style={{ padding: 20 }}>
               {previewUrl && <img src={previewUrl} style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 14, background: '#f8fafc' }} />}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, color: C.muted }}>Confianza IA:</span>
-                <div style={{ width: 70, height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(form.confianza || 0) * 100}%`, background: C.navy, borderRadius: 2 }} />
-                </div>
-                <span style={{ fontSize: 11, color: C.muted, fontFamily: C.mono }}>{Math.round((form.confianza || 0) * 100)}%</span>
+                {!modal?.manual && !modal?.edit && (
+                  <>
+                    <span style={{ fontSize: 11, color: C.muted }}>Confianza IA:</span>
+                    <div style={{ width: 70, height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${(form.confianza || 0) * 100}%`, background: C.navy, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: C.muted, fontFamily: C.mono }}>{Math.round((form.confianza || 0) * 100)}%</span>
+                  </>
+                )}
                 {form.tipo === 'B' && <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#fef3c7', color: C.yellow, border: '1px solid #fde68a' }}>Factura B — IVA incluido</span>}
                 {form.tipo === 'C' && <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: '#f1f5f9', color: C.muted, border: `1px solid ${C.border}` }}>Monotributo</span>}
               </div>
@@ -729,7 +866,7 @@ export default function ClienteDetalle() {
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Alícuota</label>
+                  <label style={lbl}>Alícuota principal</label>
                   <select value={form.alicuota ?? 21} onChange={e => updateForm('alicuota', e.target.value)} style={inp}>
                     {[21, 10.5, 27, 0].map(a => <option key={a} value={a}>{a}%</option>)}
                   </select>
@@ -738,13 +875,29 @@ export default function ClienteDetalle() {
                   <label style={lbl}>Total Factura</label>
                   <input type="number" value={form.total || 0} onChange={e => updateForm('total', e.target.value)} step="0.01" style={inp} />
                 </div>
-                <div>
-                  <label style={lbl}>Neto Gravado</label>
-                  <input type="number" value={form.neto || 0} onChange={e => updateForm('neto', e.target.value)} step="0.01" style={{ ...inp, color: C.green, fontWeight: 600 }} />
-                </div>
-                <div>
-                  <label style={lbl}>{isVentasModal ? 'IVA Débito Fiscal' : 'IVA Crédito Fiscal'}</label>
-                  <input type="number" value={form.iva || 0} onChange={e => updateForm('iva', e.target.value)} step="0.01" style={{ ...inp, color: isVentasModal ? C.red : C.green, fontWeight: 600 }} />
+                <div style={{ gridColumn: 'span 2', borderTop: `1px solid ${C.border}`, paddingTop: 10, marginTop: 2 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Desglose por alícuota</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
+                    {[
+                      { label: 'Neto 21%',    key: 'neto21',  color: C.text  },
+                      { label: 'IVA 21%',     key: 'iva21',   color: C.green },
+                      { label: 'Neto 10,5%',  key: 'neto105', color: C.text  },
+                      { label: 'IVA 10,5%',   key: 'iva105',  color: C.green },
+                      { label: 'Neto 27%',    key: 'neto27',  color: C.text  },
+                      { label: 'IVA 27%',     key: 'iva27',   color: C.green },
+                      { label: 'No Gravado',  key: 'noGrav',  color: C.text  },
+                      { label: 'Exento',      key: 'exento',  color: C.text  },
+                    ].map(({ label, key, color }) => (
+                      <div key={key}>
+                        <label style={lbl}>{label}</label>
+                        <input type="number" value={form[key] ?? 0} onChange={e => updateForm(key, e.target.value)} step="0.01" style={{ ...inp, color, fontWeight: 600, fontSize: 12 }} />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 16, justifyContent: 'flex-end', fontSize: 12 }}>
+                    <span style={{ color: C.muted }}>Neto total: <strong style={{ fontFamily: C.mono, color: C.text }}>$ {fmt(form.neto || 0)}</strong></span>
+                    <span style={{ color: C.muted }}>{isVentasModal ? 'IVA DF' : 'IVA CF'}: <strong style={{ fontFamily: C.mono, color: isVentasModal ? C.red : C.green }}>$ {fmt(form.iva || 0)}</strong></span>
+                  </div>
                 </div>
               </div>
             </div>
