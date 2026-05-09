@@ -701,9 +701,7 @@ export default function ClienteDetalle() {
                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 10v2h10v-2" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             Exportar Excel
                           </button>
-                          <button onClick={() => exportTXT(comprasEntries, period)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>
-                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 2h10v10H2z" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 5h6M4 7h4" stroke={C.navy} strokeWidth="1.2" strokeLinecap="round"/></svg>
+                          <button onClick={() => exportTXT(comprasEntries, period)} style={{padding:'7px 14px', background:'#1a3a5c', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', fontWeight:'600', cursor:'pointer'}}>
                             Exportar TXT ARCA
                           </button>
                         </div>
