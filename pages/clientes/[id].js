@@ -830,13 +830,11 @@ export default function ClienteDetalle() {
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 700, whiteSpace: 'nowrap' }}>$ {fmt(e.total)}</td>
                               <td style={{ padding: '9px 8px' }}>
                                 <div style={{ display: 'flex', gap: 4 }}>
+                                  <button onClick={() => openEditModal(e)}
+                                    style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Editar">✎</button>
                                   {(rol === 'admin' || !e.uploaded_by || e.uploaded_by === user?.id) && (
-                                    <>
-                                      <button onClick={() => openEditModal(e)}
-                                        style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Editar">✎</button>
-                                      <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
-                                        style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Eliminar">✕</button>
-                                    </>
+                                    <button onClick={() => handleDelete(e.id, isCompras ? 'compras' : 'ventas')}
+                                      style={{ width: 24, height: 24, background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Eliminar">✕</button>
                                   )}
                                 </div>
                               </td>
