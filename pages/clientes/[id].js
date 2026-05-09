@@ -74,6 +74,50 @@ function exportXLS(compras, ventas, period, clienteNombre) {
   a.click();
 }
 
+function exportTXT(compras, period) {
+  if (!compras.length) return;
+  const arcaCod = { A: '001', B: '006', C: '011', M: '051' };
+  const fmtAmt  = n => (Number(n) || 0).toFixed(2);
+  const lines = compras.map(e => {
+    let fecha = e.fecha || '';
+    if (fecha.includes('-')) { fecha = fecha.replace(/-/g, ''); }
+    else if (fecha.includes('/')) { const p = fecha.split('/'); fecha = p[2] + p[1] + p[0]; }
+    const cod = arcaCod[e.tipo] || '006';
+    let ptoVenta = '0000', nroComp = '00000000';
+    if (e.nro && e.nro.includes('-')) {
+      const p = e.nro.split('-');
+      ptoVenta = (p[0] || '').padStart(4, '0').slice(-4);
+      nroComp  = (p[1] || '').padStart(8, '0').slice(-8);
+    } else if (e.nro) {
+      nroComp = String(e.nro).padStart(8, '0').slice(-8);
+    }
+    const ali    = Number(e.alicuota);
+    const neto21  = ali === 21   ? e.neto : 0;
+    const neto105 = ali === 10.5 ? e.neto : 0;
+    const neto27  = ali === 27   ? e.neto : 0;
+    const noGrav  = ali === 0    ? e.neto : 0;
+    const iva21   = ali === 21   ? e.iva : 0;
+    const iva105  = ali === 10.5 ? e.iva : 0;
+    const iva27   = ali === 27   ? e.iva : 0;
+    const cuit    = (e.cuit || '').replace(/-/g, '');
+    const cuitRec = (e.cuit_rec || '').replace(/-/g, '');
+    return [
+      fecha, cod, ptoVenta, nroComp,
+      '80', cuit, e.proveedor || '',
+      fmtAmt(e.total),
+      fmtAmt(neto21), fmtAmt(neto105), fmtAmt(neto27),
+      fmtAmt(noGrav), fmtAmt(0),
+      fmtAmt(iva21), fmtAmt(iva105), fmtAmt(iva27),
+      'PES',
+    ].join('|');
+  });
+  const [mm, yyyy] = period.split('/');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
+  a.download = `IVA_Compras_${yyyy}${mm}.txt`;
+  a.click();
+}
+
 function entryToDb(entry, libro, periodo, clienteId) {
   return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total };
 }
@@ -581,6 +625,13 @@ export default function ClienteDetalle() {
                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 10v2h10v-2" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             Exportar Excel
                           </button>
+                          {isCompras && (
+                            <button onClick={() => exportTXT(comprasEntries, period)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'none', border: `1.5px solid ${C.border}`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: C.navy, cursor: 'pointer' }}>
+                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 2h10v10H2z" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 5h6M4 7h4" stroke={C.navy} strokeWidth="1.2" strokeLinecap="round"/></svg>
+                              Exportar TXT ARCA
+                            </button>
+                          )}
                         </div>
                       </div>
                       {/* Date filters */}
