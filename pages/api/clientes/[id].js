@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { data, error } = await supabase
       .from('clientes_estudio')
-      .select('id, nombre, descripcion, created_at, empresas(id, cuit, nombre_empresa, created_at)')
+      .select('id, nombre, descripcion, created_at, empresas(id, cuit, nombre_empresa, actividad, direccion, provincia, localidad, created_at)')
       .eq('id', id)
       .single();
 

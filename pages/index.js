@@ -81,13 +81,13 @@ export default function Dashboard() {
   }
 
   function openModal() {
-    setForm({ nombre: '', descripcion: '', empresas: [{ cuit: '', nombre_empresa: '' }] });
+    setForm({ nombre: '', descripcion: '', empresas: [{ cuit: '', nombre_empresa: '', actividad: '', direccion: '', provincia: '', localidad: '' }] });
     setFormError('');
     setModal(true);
   }
 
   function addEmpresa() {
-    setForm(f => ({ ...f, empresas: [...f.empresas, { cuit: '', nombre_empresa: '' }] }));
+    setForm(f => ({ ...f, empresas: [...f.empresas, { cuit: '', nombre_empresa: '', actividad: '', direccion: '', provincia: '', localidad: '' }] }));
   }
 
   function removeEmpresa(i) {
@@ -323,25 +323,47 @@ export default function Dashboard() {
               </div>
               <div>
                 <label style={{ ...lbl, marginBottom: 10 }}>Empresas <span style={{ color: C.red }}>*</span></label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {form.empresas.map((emp, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                      <div style={{ flex: '0 0 145px' }}>
-                        {i === 0 && <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>CUIT <span style={{ color: C.red }}>*</span></div>}
-                        <input value={emp.cuit} onChange={e => updateEmpresa(i, 'cuit', e.target.value)}
-                          placeholder="20-12345678-9" style={inp} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        {i === 0 && <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Razón social <span style={{ color: C.red }}>*</span></div>}
-                        <input value={emp.nombre_empresa} onChange={e => updateEmpresa(i, 'nombre_empresa', e.target.value)}
-                          placeholder="Nombre de la empresa" style={inp} />
-                      </div>
+                    <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 9, padding: '14px 14px 10px', background: '#fafbfc', position: 'relative' }}>
                       {form.empresas.length > 1 && (
                         <button onClick={() => removeEmpresa(i)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, padding: '9px 6px', borderRadius: 4, display: 'flex', flexShrink: 0 }}>
+                          style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', color: C.muted, padding: 4, borderRadius: 4, display: 'flex' }}>
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3L3 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                         </button>
                       )}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label style={lbl}>Nombre empresa <span style={{ color: C.red }}>*</span></label>
+                          <input value={emp.nombre_empresa} onChange={e => updateEmpresa(i, 'nombre_empresa', e.target.value)}
+                            placeholder="Razón social" style={inp} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label style={lbl}>CUIT <span style={{ color: C.red }}>*</span></label>
+                          <input value={emp.cuit} onChange={e => updateEmpresa(i, 'cuit', e.target.value)}
+                            placeholder="20-12345678-9" style={inp} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label style={lbl}>Actividad <span style={{ color: C.muted, fontWeight: 400 }}>(opcional)</span></label>
+                          <input value={emp.actividad || ''} onChange={e => updateEmpresa(i, 'actividad', e.target.value)}
+                            placeholder="Rubro o actividad principal" style={inp} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Calle <span style={{ color: C.muted, fontWeight: 400 }}>(opcional)</span></label>
+                          <input value={emp.direccion || ''} onChange={e => updateEmpresa(i, 'direccion', e.target.value)}
+                            placeholder="Dirección" style={inp} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Provincia <span style={{ color: C.muted, fontWeight: 400 }}>(opcional)</span></label>
+                          <input value={emp.provincia || ''} onChange={e => updateEmpresa(i, 'provincia', e.target.value)}
+                            placeholder="Provincia" style={inp} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label style={lbl}>Localidad <span style={{ color: C.muted, fontWeight: 400 }}>(opcional)</span></label>
+                          <input value={emp.localidad || ''} onChange={e => updateEmpresa(i, 'localidad', e.target.value)}
+                            placeholder="Ciudad o localidad" style={inp} />
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

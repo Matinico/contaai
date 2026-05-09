@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { data, error } = await supabase
       .from('clientes_estudio')
-      .select('id, nombre, descripcion, created_at, empresas(id, cuit, nombre_empresa)')
+      .select('id, nombre, descripcion, created_at, empresas(id, cuit, nombre_empresa, actividad, direccion, provincia, localidad)')
       .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
@@ -58,6 +58,10 @@ export default async function handler(req, res) {
             cliente_id: cliente.id,
             cuit: e.cuit.trim(),
             nombre_empresa: e.nombre_empresa.trim(),
+            actividad: e.actividad?.trim() || null,
+            direccion: e.direccion?.trim() || null,
+            provincia: e.provincia?.trim() || null,
+            localidad: e.localidad?.trim() || null,
           })));
         if (empErr) return res.status(500).json({ error: empErr.message });
       }
