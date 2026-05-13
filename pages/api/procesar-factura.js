@@ -47,6 +47,7 @@ Reglas:
 - "iva_discriminado": true si el IVA aparece como línea separada en la factura; false si está incluido en el total.
 - "confianza": número entre 0 y 1 indicando tu certeza sobre la extracción (1 = muy seguro).
 - "categoria": elegí la más apropiada según el rubro del proveedor o el concepto.
+- El campo "proveedor" debe contener ÚNICAMENTE la razón social o nombre legal del EMISOR de la factura — es decir quien la emite, no quien la recibe. Si ves un nombre comercial seguido de un guión y luego la razón social legal (ej: "PUNTO NORTE - MUNINI MARIA JOSE"), usá solo la parte después del guión ("MUNINI MARIA JOSE"). No incluyas nombres de fantasía, nombres de locales ni información del comprador.
 - Solo el JSON, sin markdown ni explicaciones.`;
 
 export default async function handler(req, res) {
