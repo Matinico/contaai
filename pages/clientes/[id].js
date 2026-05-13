@@ -185,11 +185,11 @@ function calcBreakdown(neto, iva, alicuota) {
 }
 
 function entryToDb(entry, libro, periodo, clienteId) {
-  return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total, neto_gravado_21: entry.neto21 ?? 0, iva_21: entry.iva21 ?? 0, neto_gravado_105: entry.neto105 ?? 0, iva_105: entry.iva105 ?? 0, neto_gravado_27: entry.neto27 ?? 0, iva_27: entry.iva27 ?? 0 };
+  return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total, cae: entry.cae || null, neto_gravado_21: entry.neto21 ?? 0, iva_21: entry.iva21 ?? 0, neto_gravado_105: entry.neto105 ?? 0, iva_105: entry.iva105 ?? 0, neto_gravado_27: entry.neto27 ?? 0, iva_27: entry.iva27 ?? 0 };
 }
 
 function dbToEntry(row) {
-  const base = { id: row.id, uploaded_by: row.uploaded_by ?? null, fecha: row.fecha ?? '', tipo: row.tipo ?? 'B', nro: row.nro ?? '', concepto: row.concepto ?? '', categoria: row.categoria ?? 'otros', alicuota: Number(row.alicuota ?? 21), neto: Number(row.neto ?? 0), iva: Number(row.iva ?? 0), total: Number(row.total ?? 0), cae: '', neto21: Number(row.neto_gravado_21 ?? 0), iva21: Number(row.iva_21 ?? 0), neto105: Number(row.neto_gravado_105 ?? 0), iva105: Number(row.iva_105 ?? 0), neto27: Number(row.neto_gravado_27 ?? 0), iva27: Number(row.iva_27 ?? 0), noGrav: 0, exento: 0 };
+  const base = { id: row.id, uploaded_by: row.uploaded_by ?? null, fecha: row.fecha ?? '', tipo: row.tipo ?? 'B', nro: row.nro ?? '', concepto: row.concepto ?? '', categoria: row.categoria ?? 'otros', alicuota: Number(row.alicuota ?? 21), neto: Number(row.neto ?? 0), iva: Number(row.iva ?? 0), total: Number(row.total ?? 0), cae: row.cae ?? '', neto21: Number(row.neto_gravado_21 ?? 0), iva21: Number(row.iva_21 ?? 0), neto105: Number(row.neto_gravado_105 ?? 0), iva105: Number(row.iva_105 ?? 0), neto27: Number(row.neto_gravado_27 ?? 0), iva27: Number(row.iva_27 ?? 0), noGrav: 0, exento: 0 };
   return row.libro === 'ventas'
     ? { ...base, cliente: row.proveedor ?? '', cuit_cli: row.cuit ?? '' }
     : { ...base, proveedor: row.proveedor ?? '', cuit: row.cuit ?? '', cuit_rec: '' };
@@ -346,6 +346,17 @@ export default function ClienteDetalle() {
         const json = await res.json();
         const aiData = res.ok ? json.data : null;
         if (!res.ok) showToast('⚠️', json.error || 'Error de API', true);
+        if (aiData?.cae) {
+          try {
+            const caeChk = await authFetch(`/api/facturas?cae=${encodeURIComponent(aiData.cae)}&cliente_id=${id}`);
+            const caeJ = await caeChk.json();
+            if (caeJ.data?.length > 0) {
+              showToast('ℹ️', `Factura ya cargada (CAE ${aiData.cae}) — se omite`, false);
+              setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'done' } : x));
+              continue;
+            }
+          } catch (e) { console.error('Error verificando CAE:', e); }
+        }
         const entry = await new Promise(resolve => { resolveRef.current = resolve; setModal({ file: item.file, data: aiData, mode }); setForm(buildForm(aiData)); });
         if (entry) {
           const cuit = mode === 'ventas' ? entry.cuit_cli : entry.cuit;
