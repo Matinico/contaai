@@ -382,14 +382,24 @@ export default function ClienteDetalle() {
               }
             } catch (e) { console.error('Error verificando entidad:', e); }
           }
+          let saved = false;
           try {
-            const saveRes = await authFetch('/api/facturas', { method: 'POST', body: JSON.stringify({ ...entryToDb(entry, mode, period, id), cuit_entidad }) });
+            const payload = { ...entryToDb(entry, mode, period, id), cuit_entidad };
+            console.log('[processQueue] POST /api/facturas payload:', JSON.stringify(payload));
+            const saveRes = await authFetch('/api/facturas', { method: 'POST', body: JSON.stringify(payload) });
             const saveJson = await saveRes.json();
-            if (!saveRes.ok) throw new Error(saveJson.error);
-            setE(e => [...e, dbToEntry(saveJson.data)]);
-          } catch (err) { showToast('⚠️', 'Error al guardar: ' + err.message, true); }
+            console.log('[processQueue] POST /api/facturas response:', saveRes.status, JSON.stringify(saveJson));
+            if (!saveRes.ok) throw new Error(saveJson.error || saveJson.details?.message || `HTTP ${saveRes.status}`);
+            setE(e => [...e, dbToEntry({ ...saveJson.data, libro: mode })]);
+            saved = true;
+          } catch (err) {
+            console.error('[processQueue] Error guardando factura:', err);
+            showToast('⚠️', 'Error al guardar: ' + err.message, true);
+          }
+          setQ(q => q.map(x => x.file === item.file ? { ...x, status: saved ? 'done' : 'error' } : x));
+        } else {
+          setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'done' } : x));
         }
-        setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'done' } : x));
       } catch (err) { console.error(err); showToast('⚠️', 'Error procesando archivo', true); setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'error' } : x)); }
     }
     setProc(false); showToast('✅', 'Procesamiento completado');
