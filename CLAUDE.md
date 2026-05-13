@@ -47,3 +47,17 @@ contaai-seven.vercel.app
 - Una tarea a la vez
 - No instalar paquetes innecesarios
 - El login es solo email + password, sin OTP ni Resend
+
+## Archivos clave y su función
+- `pages/clientes/[id].js` — página principal del cliente, contiene el liquidador de IVA, modal de carga, tabla de comprobantes
+- `pages/api/facturas.js` — GET/POST/DELETE/PATCH de facturas
+- `pages/api/entidades.js` — GET/POST de entidades (proveedores/clientes)
+- `pages/api/procesar-factura.js` — llama a Anthropic API para leer imagen
+- `lib/auth-context.js` — hook de autenticación
+- `lib/supabase-browser.js` — cliente Supabase para el browser
+
+## Lógica de entidades
+La verificación de entidad nueva está en `pages/clientes/[id].js`.
+Después de confirmar una factura, se llama a `/api/entidades?cuit=XX` para verificar si existe.
+Si no existe, se muestra modal de nueva entidad.
+El CUIT siempre se normaliza (sin guiones/puntos) antes de buscar y guardar en `pages/api/entidades/index.js`.
