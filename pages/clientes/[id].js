@@ -189,7 +189,7 @@ function entryToDb(entry, libro, periodo, clienteId) {
 }
 
 function dbToEntry(row) {
-  const base = { id: row.id, uploaded_by: row.uploaded_by ?? null, fecha: row.fecha ?? '', tipo: row.tipo ?? 'B', nro: row.nro ?? '', concepto: row.concepto ?? '', categoria: row.categoria ?? 'otros', alicuota: Number(row.alicuota ?? 21), neto: Number(row.neto ?? 0), iva: Number(row.iva ?? 0), total: Number(row.total ?? 0), cae: '' };
+  const base = { id: row.id, uploaded_by: row.uploaded_by ?? null, fecha: row.fecha ?? '', tipo: row.tipo ?? 'B', nro: row.nro ?? '', concepto: row.concepto ?? '', categoria: row.categoria ?? 'otros', alicuota: Number(row.alicuota ?? 21), neto: Number(row.neto ?? 0), iva: Number(row.iva ?? 0), total: Number(row.total ?? 0), cae: '', neto21: Number(row.neto_gravado_21 ?? 0), iva21: Number(row.iva_21 ?? 0), neto105: Number(row.neto_gravado_105 ?? 0), iva105: Number(row.iva_105 ?? 0), neto27: Number(row.neto_gravado_27 ?? 0), iva27: Number(row.iva_27 ?? 0), noGrav: 0, exento: 0 };
   return row.libro === 'ventas'
     ? { ...base, cliente: row.proveedor ?? '', cuit_cli: row.cuit ?? '' }
     : { ...base, proveedor: row.proveedor ?? '', cuit: row.cuit ?? '', cuit_rec: '' };
@@ -411,7 +411,11 @@ export default function ClienteDetalle() {
 
   const openEditModal = entry => {
     const mode = isCompras ? 'compras' : 'ventas';
-    const base = { fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, total: entry.total, neto: entry.neto, iva: entry.iva, cae: entry.cae || '', confianza: 0, ...calcBreakdown(entry.neto, entry.iva, entry.alicuota) };
+    const hasBreakdown = ((entry.neto21 || 0) + (entry.neto105 || 0) + (entry.neto27 || 0)) > 0;
+    const bd = hasBreakdown
+      ? { neto21: entry.neto21, iva21: entry.iva21, neto105: entry.neto105, iva105: entry.iva105, neto27: entry.neto27, iva27: entry.iva27, noGrav: entry.noGrav ?? 0, exento: entry.exento ?? 0 }
+      : calcBreakdown(entry.neto, entry.iva, entry.alicuota);
+    const base = { fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, total: entry.total, neto: entry.neto, iva: entry.iva, cae: entry.cae || '', confianza: 0, ...bd };
     const formData = isCompras
       ? { ...base, proveedor: entry.proveedor, cuit: entry.cuit, cuit_rec: entry.cuit_rec || '' }
       : { ...base, cliente: entry.cliente, cuit_cli: entry.cuit_cli };
@@ -425,9 +429,10 @@ export default function ClienteDetalle() {
     const libro = modal?.mode;
     const netoFinal = (parseFloat(form.neto21)||0)+(parseFloat(form.neto105)||0)+(parseFloat(form.neto27)||0)+(parseFloat(form.noGrav)||0)+(parseFloat(form.exento)||0) || parseFloat(form.neto)||0;
     const ivaFinal  = (parseFloat(form.iva21)||0)+(parseFloat(form.iva105)||0)+(parseFloat(form.iva27)||0) || parseFloat(form.iva)||0;
+    const breakdown = { neto21: parseFloat(form.neto21)||0, iva21: parseFloat(form.iva21)||0, neto105: parseFloat(form.neto105)||0, iva105: parseFloat(form.iva105)||0, neto27: parseFloat(form.neto27)||0, iva27: parseFloat(form.iva27)||0, noGrav: parseFloat(form.noGrav)||0, exento: parseFloat(form.exento)||0 };
     const entry = isV
-      ? { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae }
-      : { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: form.cuit_rec, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae };
+      ? { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown }
+      : { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: form.cuit_rec, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown };
     if (modal?.manual || modal?.edit) {
       const setE = libro === 'compras' ? setComprasEntries : setVentasEntries;
       setModal(null); setEditingId(null);
@@ -829,7 +834,9 @@ export default function ClienteDetalle() {
                               <td style={{ padding: '9px 10px', color: C.muted, maxWidth: 100, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={e.concepto}>{e.concepto || '—'}</td>
                               <td style={{ padding: '9px 10px', fontSize: 11, color: C.muted }}>{CATEGORIES[e.categoria]?.label || e.categoria}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'center' }}>
-                                <span style={{ fontFamily: C.mono, fontSize: 11, background: '#e8f3fd', color: C.navy, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>{e.alicuota}%</span>
+                                <span style={{ fontFamily: C.mono, fontSize: 11, background: '#e8f3fd', color: C.navy, borderRadius: 4, padding: '2px 5px', fontWeight: 700 }}>
+                                  {[(e.neto21 > 0) && '21%', (e.neto105 > 0) && '10,5%', (e.neto27 > 0) && '27%'].filter(Boolean).join(' / ') || `${e.alicuota}%`}
+                                </span>
                               </td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, fontWeight: 500, whiteSpace: 'nowrap' }}>$ {fmt(e.alicuota > 0 ? e.neto : 0)}</td>
                               <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: C.mono, color: C.muted, whiteSpace: 'nowrap', fontSize: 11 }}>$ {fmt(e.alicuota === 0 ? e.neto : 0)}</td>
@@ -855,9 +862,9 @@ export default function ClienteDetalle() {
                     {entries.length > 0 && (
                       <div style={{ padding: '10px 16px', borderTop: `1px solid ${C.border}`, background: '#f8f9fb', display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
                         {[
-                          { l: 'Neto 21%',   v: entries.filter(e => e.alicuota === 21).reduce((s, e) => s + e.neto, 0) },
-                          { l: 'Neto 10,5%', v: entries.filter(e => e.alicuota === 10.5).reduce((s, e) => s + e.neto, 0) },
-                          { l: 'Neto 27%',   v: entries.filter(e => e.alicuota === 27).reduce((s, e) => s + e.neto, 0) },
+                          { l: 'Neto 21%',   v: entries.reduce((s, e) => s + (e.neto21  || 0), 0) },
+                          { l: 'Neto 10,5%', v: entries.reduce((s, e) => s + (e.neto105 || 0), 0) },
+                          { l: 'Neto 27%',   v: entries.reduce((s, e) => s + (e.neto27  || 0), 0) },
                           { l: isCompras ? 'Total IVA CF' : 'Total IVA DF', v: totalIva, bold: true },
                         ].map(s => (
                           <div key={s.l} style={{ textAlign: 'right' }}>
