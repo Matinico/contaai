@@ -134,7 +134,7 @@ async function exportARCA(compras, ventas, period) {
       CBTE_COD[e.tipo] || '006', // 3
       pto,                       // 5
       comp,                      // 20
-      '0'.repeat(16),            // 16 Despacho Importación
+      ' '.repeat(16),            // 16 Despacho Importación (espacios)
       '80',                      // 2
       docCuit,                   // 20
       denom,                     // 30
