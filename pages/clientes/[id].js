@@ -328,13 +328,14 @@ export default function ClienteDetalle() {
   };
 
   const buildVentasForm = d => {
-    if (!d) return { fecha: '', tipo: 'B', nro: '', cliente: '', cuit_cli: '', concepto: '', categoria: 'otros', alicuota: 21, total: 0, neto: 0, iva: 0, cae: '', confianza: 0, ...calcBreakdown(0, 0, 21) };
+    if (!d) return { fecha: '', tipo: 'B', nro: '', pto_venta: '', nro_comp: '', cliente: '', cuit_cli: '', concepto: '', categoria: 'otros', alicuota: 21, total: 0, neto: 0, iva: 0, cae: '', confianza: 0, ...calcBreakdown(0, 0, 21) };
     const catKey = d.categoria || 'otros', alicuota = d.alicuota ?? CATEGORIES[catKey]?.alicuota ?? 21, total = d.total || 0;
     let neto = d.neto || 0, iva = d.iva || 0;
     if (d.tipo_comprobante === 'C') { neto = total; iva = 0; }
     else if (!d.iva_discriminado && iva && total) { neto = total - iva; }
     else if (!d.iva_discriminado && alicuota > 0 && total) { neto = total / (1 + alicuota / 100); iva = total - neto; }
-    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', cliente: d.cliente || '', cuit_cli: d.cuit_cliente || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0, ...calcBreakdown(neto, iva, alicuota) };
+    const nroParts = (d.nro_comprobante || '').split('-');
+    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', pto_venta: nroParts[0] || '', nro_comp: nroParts[1] || '', cliente: d.cliente || '', cuit_cli: d.cuit_cliente || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0, ...calcBreakdown(neto, iva, alicuota) };
   };
 
   const processQueue = async mode => {
@@ -450,9 +451,10 @@ export default function ClienteDetalle() {
       ? { neto21: entry.neto21, iva21: entry.iva21, neto105: entry.neto105, iva105: entry.iva105, neto27: entry.neto27, iva27: entry.iva27, noGrav: entry.noGrav ?? 0, exento: entry.exento ?? 0 }
       : calcBreakdown(entry.neto, entry.iva, entry.alicuota);
     const base = { fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, total: entry.total, neto: entry.neto, iva: entry.iva, cae: entry.cae || '', confianza: 0, ...bd };
+    const nroParts = !isCompras ? (entry.nro || '').split('-') : [];
     const formData = isCompras
       ? { ...base, proveedor: entry.proveedor, cuit: entry.cuit, cuit_rec: entry.cuit_rec || '' }
-      : { ...base, cliente: entry.cliente, cuit_cli: entry.cuit_cli };
+      : { ...base, cliente: entry.cliente, cuit_cli: entry.cuit_cli, pto_venta: nroParts[0] || '', nro_comp: nroParts[1] || '' };
     setEditingId(entry.id);
     setModal({ file: null, data: null, mode, edit: true });
     setForm(formData);
@@ -464,8 +466,9 @@ export default function ClienteDetalle() {
     const netoFinal = (parseFloat(form.neto21)||0)+(parseFloat(form.neto105)||0)+(parseFloat(form.neto27)||0)+(parseFloat(form.noGrav)||0)+(parseFloat(form.exento)||0) || parseFloat(form.neto)||0;
     const ivaFinal  = (parseFloat(form.iva21)||0)+(parseFloat(form.iva105)||0)+(parseFloat(form.iva27)||0) || parseFloat(form.iva)||0;
     const breakdown = { neto21: parseFloat(form.neto21)||0, iva21: parseFloat(form.iva21)||0, neto105: parseFloat(form.neto105)||0, iva105: parseFloat(form.iva105)||0, neto27: parseFloat(form.neto27)||0, iva27: parseFloat(form.iva27)||0, noGrav: parseFloat(form.noGrav)||0, exento: parseFloat(form.exento)||0 };
+    const nroVentas = `${String(form.pto_venta||'').replace(/\D/g,'').padStart(5,'0')}-${String(form.nro_comp||'').replace(/\D/g,'').padStart(8,'0')}`;
     const entry = isV
-      ? { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown }
+      ? { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: nroVentas, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown }
       : { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: form.cuit_rec, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown };
     if (modal?.manual || modal?.edit) {
       const setE = libro === 'compras' ? setComprasEntries : setVentasEntries;
@@ -945,7 +948,12 @@ export default function ClienteDetalle() {
                 {[
                   { label: 'Fecha',            key: 'fecha',    placeholder: 'DD/MM/YYYY',    span: 1 },
                   { label: 'Tipo',             key: 'tipo',     type: 'select', opts: ['A', 'B', 'C', 'M'], span: 1 },
-                  { label: 'Nro. Comprobante', key: 'nro',      placeholder: '0001-00000001', span: 2 },
+                  ...(isVentasModal ? [
+                    { label: 'Pto. de Venta',    key: 'pto_venta', placeholder: '00001',    span: 1, maxLen: 5 },
+                    { label: 'Nro. Comprobante', key: 'nro_comp',  placeholder: '00000001', span: 1, maxLen: 8 },
+                  ] : [
+                    { label: 'Nro. Comprobante', key: 'nro',       placeholder: '0001-00000001', span: 2 },
+                  ]),
                   ...(isVentasModal ? [
                     { label: 'Cliente',        key: 'cliente',  placeholder: 'Razón social',  span: 2 },
                     { label: 'CUIT Cliente',   key: 'cuit_cli', placeholder: '20-12345678-9', span: 2 },
@@ -960,7 +968,7 @@ export default function ClienteDetalle() {
                     <label style={lbl}>{f.label}</label>
                     {f.type === 'select'
                       ? <select value={form[f.key] || ''} onChange={e => updateForm(f.key, e.target.value)} style={inp}>{f.opts.map(o => <option key={o}>{o}</option>)}</select>
-                      : <input value={form[f.key] || ''} onChange={e => updateForm(f.key, e.target.value)} placeholder={f.placeholder} style={inp} />
+                      : <input value={form[f.key] || ''} onChange={e => updateForm(f.key, e.target.value)} placeholder={f.placeholder} maxLength={f.maxLen} style={inp} />
                     }
                   </div>
                 ))}
