@@ -53,18 +53,22 @@ export default async function handler(req, res) {
 
     // ── Búsqueda exacta por CUIT: GET /api/entidades?cuit=xxx ──────────────
     if (cuit) {
-      // Intentar con el cuit tal cual, y si no encuentra, con versión normalizada
-      const { data, error } = await supabase
-        .from('entidades').select('*').eq('cuit', cuit).maybeSingle();
-      if (error) return res.status(500).json({ error: error.message });
+      const norm = cuit.replace(/[-.\s]/g, '');
 
-      if (!data) {
-        const norm = cuit.replace(/[-.\s]/g, '');
+      // Buscar primero con CUIT normalizado (sin guiones/puntos)
+      const { data: d1, error: e1 } = await supabase
+        .from('entidades').select('*').eq('cuit', norm).maybeSingle();
+      if (e1) return res.status(500).json({ error: e1.message });
+      if (d1) return res.status(200).json({ data: d1 });
+
+      // Fallback: buscar con el valor original (registros legacy con guiones)
+      if (norm !== cuit) {
         const { data: d2 } = await supabase
-          .from('entidades').select('*').eq('cuit', norm).maybeSingle();
+          .from('entidades').select('*').eq('cuit', cuit).maybeSingle();
         return res.status(200).json({ data: d2 ?? null });
       }
-      return res.status(200).json({ data });
+
+      return res.status(200).json({ data: null });
     }
 
     return res.status(400).json({ error: 'Falta cuit o q' });
@@ -73,15 +77,16 @@ export default async function handler(req, res) {
   // ── POST /api/entidades ──────────────────────────────────────────────────
   if (req.method === 'POST') {
     const { cuit, nombre, tipo } = req.body;
-    if (!cuit || !nombre) return res.status(400).json({ error: 'Faltan campos' });
+    const normalizedCuit = (cuit || '').replace(/[-.\s]/g, '');
+    if (!normalizedCuit || !nombre) return res.status(400).json({ error: 'Faltan campos' });
 
     const { data, error } = await supabase
-      .from('entidades').insert({ cuit, nombre, tipo }).select().single();
+      .from('entidades').insert({ cuit: normalizedCuit, nombre, tipo }).select().single();
 
     if (error) {
       if (error.code === '23505') {
         const { data: existing } = await supabase
-          .from('entidades').select('*').eq('cuit', cuit).maybeSingle();
+          .from('entidades').select('*').eq('cuit', normalizedCuit).maybeSingle();
         return res.status(200).json({ data: existing });
       }
       return res.status(500).json({ error: error.message });
