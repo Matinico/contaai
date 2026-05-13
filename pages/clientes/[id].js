@@ -38,6 +38,7 @@ const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.bord
 const lbl  = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
 
 function fmt(n) { return (n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); if(d.length<=2)return d; if(d.length<=10)return`${d.slice(0,2)}-${d.slice(2)}`; return`${d.slice(0,2)}-${d.slice(2,10)}-${d.slice(10)}`; }
 
 function fileToBase64(file) {
   if (file.type === 'application/pdf') {
@@ -406,6 +407,7 @@ export default function ClienteDetalle() {
   };
 
   const updateForm = (key, val) => {
+    if (['cuit','cuit_cli','cuit_rec'].includes(key)) val = formatCuit(val);
     setForm(f => {
       const u = { ...f, [key]: val };
       const BREAKDOWN_KEYS = ['neto21','iva21','neto105','iva105','neto27','iva27','noGrav','exento'];

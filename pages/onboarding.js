@@ -168,7 +168,7 @@ export default function Onboarding() {
 
               <div>
                 <label style={lbl}>CUIT del estudio <span style={{ color: C.red }}>*</span></label>
-                <input className="inp" value={cuit} onChange={e => setCuit(e.target.value)}
+                <input className="inp" value={cuit} onChange={e => setCuit(formatCuit(e.target.value))}
                   placeholder="20-12345678-9" />
               </div>
 
@@ -200,6 +200,7 @@ function ErrorBox({ msg }) {
 }
 
 const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: '#5a6a7a', marginBottom: 6 };
+function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); if(d.length<=2)return d; if(d.length<=10)return`${d.slice(0,2)}-${d.slice(2)}`; return`${d.slice(0,2)}-${d.slice(2,10)}-${d.slice(10)}`; }
 
 function btnPrimary(loading) {
   return {

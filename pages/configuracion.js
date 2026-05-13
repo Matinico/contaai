@@ -21,6 +21,7 @@ const C = {
 const card = { background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' };
 const lbl  = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
 const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 14, outline: 'none', fontFamily: C.font };
+function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); if(d.length<=2)return d; if(d.length<=10)return`${d.slice(0,2)}-${d.slice(2)}`; return`${d.slice(0,2)}-${d.slice(2,10)}-${d.slice(10)}`; }
 
 export default function Configuracion() {
   const { user, signOut } = useAuth();
@@ -332,7 +333,7 @@ export default function Configuracion() {
               </div>
               <div>
                 <label style={lbl}>CUIT <span style={{ color: C.red }}>*</span></label>
-                <input value={editForm.cuit} onChange={e => setEditForm(f => ({ ...f, cuit: e.target.value }))} placeholder="20-12345678-9" style={inp} />
+                <input value={editForm.cuit} onChange={e => setEditForm(f => ({ ...f, cuit: formatCuit(e.target.value) }))} placeholder="20-12345678-9" style={inp} />
               </div>
               {editError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '9px 14px', fontSize: 13, color: C.red }}>{editError}</div>}
             </div>
