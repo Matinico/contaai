@@ -185,7 +185,7 @@ function calcBreakdown(neto, iva, alicuota) {
 }
 
 function entryToDb(entry, libro, periodo, clienteId) {
-  return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total };
+  return { libro, periodo, cliente_id: clienteId, fecha: entry.fecha, tipo: entry.tipo, nro: entry.nro, proveedor: libro === 'ventas' ? (entry.cliente ?? '') : (entry.proveedor ?? ''), cuit: libro === 'ventas' ? (entry.cuit_cli ?? '') : (entry.cuit ?? ''), concepto: entry.concepto, categoria: entry.categoria, alicuota: entry.alicuota, neto: entry.neto, iva: entry.iva, total: entry.total, neto_gravado_21: entry.neto21 ?? 0, iva_21: entry.iva21 ?? 0, neto_gravado_105: entry.neto105 ?? 0, iva_105: entry.iva105 ?? 0, neto_gravado_27: entry.neto27 ?? 0, iva_27: entry.iva27 ?? 0 };
 }
 
 function dbToEntry(row) {
@@ -306,7 +306,15 @@ export default function ClienteDetalle() {
     if (d.tipo_comprobante === 'C') { neto = total; iva = 0; }
     else if (!d.iva_discriminado && iva && total) { neto = total - iva; }
     else if (!d.iva_discriminado && alicuota > 0 && total) { neto = total / (1 + alicuota / 100); iva = total - neto; }
-    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', proveedor: d.proveedor || '', cuit: d.cuit_proveedor || '', cuit_rec: d.cuit_receptor || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0, ...calcBreakdown(neto, iva, alicuota) };
+    const n21 = d.neto_gravado_21 ?? 0, i21 = d.iva_21 ?? 0;
+    const n105 = d.neto_gravado_105 ?? 0, i105 = d.iva_105 ?? 0;
+    const n27 = d.neto_gravado_27 ?? 0, i27 = d.iva_27 ?? 0;
+    const hasBreakdown = (n21 + n105 + n27) > 0;
+    if (hasBreakdown) { neto = n21 + n105 + n27; iva = i21 + i105 + i27; }
+    const breakdown = hasBreakdown
+      ? { neto21: n21, iva21: i21, neto105: n105, iva105: i105, neto27: n27, iva27: i27, noGrav: 0, exento: 0 }
+      : calcBreakdown(neto, iva, alicuota);
+    return { fecha: d.fecha || '', tipo: d.tipo_comprobante || 'B', nro: d.nro_comprobante || '', proveedor: d.proveedor || '', cuit: d.cuit_proveedor || '', cuit_rec: d.cuit_receptor || '', concepto: d.concepto || '', categoria: catKey, alicuota, total, neto, iva, cae: d.cae || '', confianza: d.confianza || 0, ...breakdown };
   };
 
   const buildVentasForm = d => {
