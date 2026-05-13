@@ -84,47 +84,118 @@ function exportXLS(compras, ventas, period, clienteNombre) {
   a.click();
 }
 
-function exportTXT(compras, period) {
-  if (!compras.length) return;
-  const arcaCod = { A: '001', B: '006', C: '011', M: '051' };
-  const fmtAmt  = n => (Number(n) || 0).toFixed(2);
-  const lines = compras.map(e => {
-    let fecha = e.fecha || '';
-    if (fecha.includes('-')) { fecha = fecha.replace(/-/g, ''); }
-    else if (fecha.includes('/')) { const p = fecha.split('/'); fecha = p[2] + p[1] + p[0]; }
-    const cod = arcaCod[e.tipo] || '006';
-    let ptoVenta = '0000', nroComp = '00000000';
-    if (e.nro && e.nro.includes('-')) {
-      const p = e.nro.split('-');
-      ptoVenta = (p[0] || '').padStart(4, '0').slice(-4);
-      nroComp  = (p[1] || '').padStart(8, '0').slice(-8);
-    } else if (e.nro) {
-      nroComp = String(e.nro).padStart(8, '0').slice(-8);
-    }
-    const ali    = Number(e.alicuota);
-    const neto21  = ali === 21   ? e.neto : 0;
-    const neto105 = ali === 10.5 ? e.neto : 0;
-    const neto27  = ali === 27   ? e.neto : 0;
-    const noGrav  = ali === 0    ? e.neto : 0;
-    const iva21   = ali === 21   ? e.iva : 0;
-    const iva105  = ali === 10.5 ? e.iva : 0;
-    const iva27   = ali === 27   ? e.iva : 0;
-    const cuit    = (e.cuit || '').replace(/-/g, '');
-    const cuitRec = (e.cuit_rec || '').replace(/-/g, '');
-    return [
-      fecha, cod, ptoVenta, nroComp,
-      '80', cuit, e.proveedor || '',
-      fmtAmt(e.total),
-      fmtAmt(neto21), fmtAmt(neto105), fmtAmt(neto27),
-      fmtAmt(noGrav), fmtAmt(0),
-      fmtAmt(iva21), fmtAmt(iva105), fmtAmt(iva27),
-      'PES',
-    ].join('|');
-  });
+async function exportARCA(compras, ventas, period) {
+  if (!compras.length && !ventas.length) return;
   const [mm, yyyy] = period.split('/');
+  const yyyymm = `${yyyy}${mm}`;
+
+  const JSZip = (await import('jszip')).default;
+  const zip   = new JSZip();
+
+  const CBTE_COD = { A: '001', B: '006', C: '011', M: '051' };
+  const ALI_COD  = { '21': '0005', '10.5': '0004', '27': '0006', '0': '0003' };
+  const Z15      = '000000000000000';
+
+  const padLd = (v, n) => String(v ?? '').replace(/\D/g, '').padStart(n, '0').slice(-n);
+  const padR  = (v, n) => String(v ?? '').slice(0, n).padEnd(n, ' ');
+  const fmtAmt = n => String(Math.round(Math.abs(Number(n) || 0) * 100)).padStart(15, '0');
+
+  function parseFecha(f) {
+    if (!f) return '00000000';
+    if (f.includes('/')) { const p = f.split('/'); return `${p[2]}${p[1]}${p[0]}`; }
+    return f.replace(/-/g, '');
+  }
+
+  function parseNro(nro) {
+    if (nro && nro.includes('-')) {
+      const p = nro.split('-');
+      return { pto: padLd(p[0], 5), comp: padLd(p[1], 20) };
+    }
+    return { pto: '00000', comp: padLd(nro || '0', 20) };
+  }
+
+  function cantAli(e) {
+    if (!['A', 'M'].includes(e.tipo)) return '0';
+    const hasBreakdown = (e.neto21 || 0) + (e.neto105 || 0) + (e.neto27 || 0) > 0;
+    if (hasBreakdown) {
+      return String(((e.neto21 || 0) > 0 ? 1 : 0) + ((e.neto105 || 0) > 0 ? 1 : 0) + ((e.neto27 || 0) > 0 ? 1 : 0));
+    }
+    return (e.neto || 0) > 0 ? '1' : '0';
+  }
+
+  function buildCbte(e, esVenta) {
+    const { pto, comp } = parseNro(e.nro);
+    const docCuit = padLd(esVenta ? (e.cuit_cli || '') : (e.cuit || ''), 20);
+    const denom   = padR(esVenta ? (e.cliente || '') : (e.proveedor || ''), 30);
+    const isTipoAM = ['A', 'M'].includes(e.tipo);
+    const cfdf    = isTipoAM ? fmtAmt(e.iva) : Z15;
+    return [
+      parseFecha(e.fecha),       // 8
+      CBTE_COD[e.tipo] || '006', // 3
+      pto,                       // 5
+      comp,                      // 20
+      '0'.repeat(16),            // 16 Despacho Importación
+      '80',                      // 2
+      docCuit,                   // 20
+      denom,                     // 30
+      fmtAmt(e.total),           // 15 Importe Total
+      Z15,                       // 15 No Gravado
+      Z15,                       // 15 Exento
+      Z15,                       // 15 Percep IVA
+      Z15,                       // 15 Percep Otros Nac
+      Z15,                       // 15 Percep IIBB
+      Z15,                       // 15 Percep Municipal
+      Z15,                       // 15 Imp Internos
+      'PES',                     // 3
+      '0001000000',              // 10 Tipo de Cambio
+      cantAli(e),                // 1
+      ' ',                       // 1 Cod Operación
+      cfdf,                      // 15 CF/DF Computable
+      Z15,                       // 15 Otros Tributos
+      '0'.repeat(11),            // 11 CUIT Emisor
+      ' '.repeat(30),            // 30 Denominación Emisor
+      Z15,                       // 15 IVA Comisión
+    ].join('');
+  }
+
+  function buildAliLines(e, esVenta) {
+    if (!['A', 'M'].includes(e.tipo)) return [];
+    const { pto, comp } = parseNro(e.nro);
+    const docCuit = padLd(esVenta ? (e.cuit_cli || '') : (e.cuit || ''), 11);
+    const cod     = CBTE_COD[e.tipo] || '001';
+    const lines   = [];
+    const addLine = (neto, iva, pct) => {
+      if ((neto || 0) <= 0 && (iva || 0) <= 0) return;
+      lines.push([cod, pto, comp, '80', docCuit, fmtAmt(neto), ALI_COD[String(pct)] || '0005', fmtAmt(iva)].join(''));
+    };
+    const hasBreakdown = (e.neto21 || 0) + (e.neto105 || 0) + (e.neto27 || 0) > 0;
+    if (hasBreakdown) {
+      addLine(e.neto21,  e.iva21,  '21');
+      addLine(e.neto105, e.iva105, '10.5');
+      addLine(e.neto27,  e.iva27,  '27');
+    } else {
+      addLine(e.neto, e.iva, String(e.alicuota || '21'));
+    }
+    return lines;
+  }
+
+  function encodeWin1252(str) {
+    const bytes = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); bytes[i] = c < 256 ? c : 0x3F; }
+    return bytes;
+  }
+
+  const makeFile = lines => encodeWin1252(lines.join('\r\n'));
+
+  zip.file(`LIBRO_IVA_DIGITAL_COMPRAS_ORDINARIAS_CBTE_${yyyymm}.txt`,      makeFile(compras.map(e => buildCbte(e, false))));
+  zip.file(`LIBRO_IVA_DIGITAL_COMPRAS_ORDINARIAS_ALICUOTAS_${yyyymm}.txt`, makeFile(compras.flatMap(e => buildAliLines(e, false))));
+  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_CBTE_${yyyymm}.txt`,                  makeFile(ventas.map(e => buildCbte(e, true))));
+  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS_${yyyymm}.txt`,             makeFile(ventas.flatMap(e => buildAliLines(e, true))));
+
+  const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
-  a.download = `IVA_Compras_${yyyy}${mm}.txt`;
+  a.href = URL.createObjectURL(blob);
+  a.download = `ARCA_LibroIVA_${yyyymm}.zip`;
   a.click();
 }
 
@@ -803,8 +874,8 @@ export default function ClienteDetalle() {
                             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2 10v2h10v-2" stroke={C.navy} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             Exportar Excel
                           </button>
-                          <button onClick={() => exportTXT(comprasEntries, period)} style={{padding:'7px 14px', background:'#1a3a5c', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', fontWeight:'600', cursor:'pointer'}}>
-                            Exportar TXT ARCA
+                          <button onClick={() => exportARCA(comprasEntries, ventasEntries, period)} style={{padding:'7px 14px', background:'#1a3a5c', color:'white', border:'none', borderRadius:'8px', fontSize:'12px', fontWeight:'600', cursor:'pointer'}}>
+                            Exportar ARCA (ZIP)
                           </button>
                           <button onClick={() => exportPDF(comprasEntries, 'compras', period, cliente?.nombre || 'cliente')} style={{padding:'7px 14px', background:'none', border:`1.5px solid ${C.border}`, borderRadius:'8px', fontSize:'12px', fontWeight:'600', color:C.navy, cursor:'pointer'}}>
                             PDF Compras
