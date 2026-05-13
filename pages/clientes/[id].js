@@ -40,6 +40,14 @@ const lbl  = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, 
 function fmt(n) { return (n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 function fileToBase64(file) {
+  if (file.type === 'application/pdf') {
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result.split(',')[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+  }
   return new Promise((res, rej) => {
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
@@ -341,7 +349,8 @@ export default function ClienteDetalle() {
       try {
         const base64 = await fileToBase64(item.file);
         const rawType = item.file.type || '';
-        const mediaType = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(rawType) ? rawType : 'image/jpeg';
+        const validImages = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const mediaType = validImages.includes(rawType) ? rawType : (rawType === 'application/pdf' ? 'application/pdf' : 'image/jpeg');
         const res = await authFetch(endpoint, { method: 'POST', body: JSON.stringify({ imageBase64: base64, mediaType }) });
         const json = await res.json();
         const aiData = res.ok ? json.data : null;

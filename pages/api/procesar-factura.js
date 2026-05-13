@@ -63,8 +63,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Falta imageBase64 en el body' });
   }
 
-  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const safeMediaType = validTypes.includes(mediaType) ? mediaType : 'image/jpeg';
+  const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const isPdf = mediaType === 'application/pdf';
+  const safeMediaType = validImageTypes.includes(mediaType) ? mediaType : 'image/jpeg';
+  const fileBlock = isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: imageBase64 } }
+    : { type: 'image',    source: { type: 'base64', media_type: safeMediaType,       data: imageBase64 } };
 
   try {
     const message = await client.messages.create({
@@ -74,10 +78,7 @@ export default async function handler(req, res) {
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: safeMediaType, data: imageBase64 },
-            },
+            fileBlock,
             { type: 'text', text: PROMPT },
           ],
         },
