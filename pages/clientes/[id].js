@@ -34,8 +34,10 @@ const CATEGORIES = {
 
 const PERIODS = ['05/2026','04/2026','03/2026','02/2026','01/2026','12/2025','11/2025','10/2025'];
 
-const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 10px', color: C.text, fontFamily: C.mono, fontSize: 13, outline: 'none', boxSizing: 'border-box' };
-const lbl  = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
+const inp    = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 10px', color: C.text, fontFamily: C.mono, fontSize: 13, outline: 'none', boxSizing: 'border-box' };
+const lbl    = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
+const advLbl = { fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 };
+const advInp = w => ({ background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 6, padding: '6px 8px', color: C.text, fontSize: 12, outline: 'none', fontFamily: C.font, width: w });
 
 function fmt(n) { return (n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); if(d.length<=2)return d; if(d.length<=10)return`${d.slice(0,2)}-${d.slice(2)}`; return`${d.slice(0,2)}-${d.slice(2,10)}-${d.slice(10)}`; }
@@ -353,6 +355,10 @@ export default function ClienteDetalle() {
   const [entityModal,    setEntityModal]    = useState(null);
   const [entityForm,     setEntityForm]     = useState({ nombre: '' });
   const [editingId,      setEditingId]      = useState(null);
+  const [advOpen,        setAdvOpen]        = useState(false);
+  const [advCat,         setAdvCat]         = useState('');
+  const [advMin,         setAdvMin]         = useState('');
+  const [advMax,         setAdvMax]         = useState('');
 
   useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
 
@@ -394,9 +400,16 @@ export default function ClienteDetalle() {
   const setSearch  = isCompras ? setComprasSearch : setVentasSearch;
 
   const filtered = entries.filter(e => {
-    const name = isCompras ? e.proveedor : e.cliente;
-    if (search && !name?.toLowerCase().includes(search.toLowerCase())) return false;
+    const name = isCompras ? (e.proveedor || '') : (e.cliente || '');
+    const cuit = isCompras ? (e.cuit || '') : (e.cuit_cli || '');
+    if (search) {
+      const q = search.toLowerCase();
+      if (!name.toLowerCase().includes(q) && !cuit.toLowerCase().includes(q)) return false;
+    }
     if (filter !== 'all' && String(e.alicuota) !== filter) return false;
+    if (advCat && e.categoria !== advCat) return false;
+    if (advMin !== '' && e.total < parseFloat(advMin)) return false;
+    if (advMax !== '' && e.total > parseFloat(advMax)) return false;
     if (fechaDesde || fechaHasta) {
       const parts = e.fecha ? e.fecha.split(/[-/]/) : [];
       const iso = parts.length === 3 ? (parts[0].length === 4 ? e.fecha : `${parts[2]}-${parts[1]}-${parts[0]}`) : '';
@@ -907,6 +920,18 @@ export default function ClienteDetalle() {
                               {f === 'all' ? 'Todos' : f + '%'}
                             </button>
                           ))}
+                          {/* Advanced search toggle */}
+                          {(() => {
+                            const active = !!(search || filter !== 'all' || fechaDesde || fechaHasta || advCat || advMin || advMax);
+                            return (
+                              <button onClick={() => setAdvOpen(v => !v)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${advOpen || active ? C.navy : C.border}`, background: advOpen ? C.navy : (active ? '#e8f0fa' : 'transparent'), color: advOpen ? 'white' : (active ? C.navy : C.muted), transition: 'all 0.15s' }}>
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                                Búsqueda avanzada
+                                {active && <span style={{ background: C.accent, color: C.navy, borderRadius: '50%', width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800 }}>{[search, filter!=='all', fechaDesde, fechaHasta, advCat, advMin, advMax].filter(Boolean).length}</span>}
+                              </button>
+                            );
+                          })()}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 11, color: C.muted }}>{filtered.length} comprobante{filtered.length !== 1 ? 's' : ''}</span>
@@ -926,26 +951,57 @@ export default function ClienteDetalle() {
                           </button>
                         </div>
                       </div>
-                      {/* Date filters */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
-                          <span style={{ fontSize: 11, color: C.muted }}>Desde</span>
-                          <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
-                            style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, cursor: 'pointer', fontFamily: C.font }} />
+                      {/* Advanced search panel */}
+                      {advOpen && (
+                        <div style={{ background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+                            <div>
+                              <div style={advLbl}>{isCompras ? 'Proveedor / CUIT' : 'Cliente / CUIT'}</div>
+                              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nombre o CUIT…" style={advInp(180)} />
+                            </div>
+                            <div>
+                              <div style={advLbl}>Fecha desde</div>
+                              <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={advInp(140)} />
+                            </div>
+                            <div>
+                              <div style={advLbl}>Fecha hasta</div>
+                              <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={advInp(140)} />
+                            </div>
+                            <div>
+                              <div style={advLbl}>Alícuota</div>
+                              <select value={filter} onChange={e => setFilter(e.target.value)} style={advInp(110)}>
+                                <option value="all">Todas</option>
+                                <option value="21">21%</option>
+                                <option value="10.5">10,5%</option>
+                                <option value="27">27%</option>
+                              </select>
+                            </div>
+                            <div>
+                              <div style={advLbl}>Categoría</div>
+                              <select value={advCat} onChange={e => setAdvCat(e.target.value)} style={advInp(130)}>
+                                <option value="">Todas</option>
+                                {Object.entries(CATEGORIES).map(([k, v]) => (
+                                  <option key={k} value={k}>{v.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <div style={advLbl}>Importe mínimo</div>
+                              <input type="number" value={advMin} onChange={e => setAdvMin(e.target.value)} placeholder="0" style={advInp(100)} />
+                            </div>
+                            <div>
+                              <div style={advLbl}>Importe máximo</div>
+                              <input type="number" value={advMax} onChange={e => setAdvMax(e.target.value)} placeholder="0" style={advInp(100)} />
+                            </div>
+                          </div>
+                          <div>
+                            <button onClick={() => { setSearch(''); setFilter('all'); setFechaDesde(''); setFechaHasta(''); setAdvCat(''); setAdvMin(''); setAdvMax(''); }}
+                              style={{ padding: '5px 14px', background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: C.muted, cursor: 'pointer' }}>
+                              Limpiar filtros
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8f9fb', border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 10px' }}>
-                          <span style={{ fontSize: 11, color: C.muted }}>Hasta</span>
-                          <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
-                            style={{ background: 'none', border: 'none', outline: 'none', color: C.text, fontSize: 12, cursor: 'pointer', fontFamily: C.font }} />
-                        </div>
-                        {(fechaDesde || fechaHasta) && (
-                          <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }}
-                            style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.muted }}>
-                            Limpiar
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
 
                     {/* Table */}
