@@ -406,7 +406,16 @@ export default function ClienteDetalle() {
       const q = search.toLowerCase();
       if (!name.toLowerCase().includes(q) && !cuit.toLowerCase().includes(q)) return false;
     }
-    if (filter !== 'all' && String(e.alicuota) !== filter) return false;
+    if (filter !== 'all') {
+      const hasBreakdown = (e.neto21||0) + (e.neto105||0) + (e.neto27||0) > 0;
+      if (hasBreakdown) {
+        if (filter === '21'   && !((e.neto21  || 0) > 0)) return false;
+        if (filter === '10.5' && !((e.neto105 || 0) > 0)) return false;
+        if (filter === '27'   && !((e.neto27  || 0) > 0)) return false;
+      } else {
+        if (String(e.alicuota) !== filter) return false;
+      }
+    }
     if (advCat && e.categoria !== advCat) return false;
     if (advMin !== '' && e.total < parseFloat(advMin)) return false;
     if (advMax !== '' && e.total > parseFloat(advMax)) return false;
