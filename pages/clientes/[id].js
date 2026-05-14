@@ -259,7 +259,7 @@ async function exportPDF(entries, tipo, period, clienteNombre) {
       body, foot, headStyles, footStyles, styles: baseStyles,
       columnStyles: {
         0:{cellWidth:18}, 1:{cellWidth:7}, 2:{cellWidth:22}, 3:{cellWidth:28},
-        4:{cellWidth:22}, 5:{cellWidth:16}, 6:{cellWidth:14,...R},
+        4:{cellWidth:22}, 5:{cellWidth:16}, 6:{cellWidth:18,...R},
         7:{cellWidth:18,...R}, 8:{cellWidth:15,...R}, 9:{cellWidth:18,...R},
         10:{cellWidth:15,...R}, 11:{cellWidth:14,...R}, 12:{cellWidth:12,...R},
         13:{cellWidth:14,...R}, 14:{cellWidth:12,...R}, 15:{cellWidth:18,...R},
