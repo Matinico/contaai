@@ -244,8 +244,9 @@ async function exportPDF(entries, tipo, period, clienteNombre) {
       const b = breakdown(e);
       tots.n21 += b.n21; tots.i21 += b.i21; tots.n105 += b.n105; tots.i105 += b.i105;
       tots.n27 += b.n27; tots.i27 += b.i27; tots.noG += b.noG; tots.total += e.total;
+      const aliLabel = [b.n21>0&&'21%', b.n105>0&&'10,5%', b.n27>0&&'27%'].filter(Boolean).join('/') || `${e.alicuota}%`;
       return [e.fecha, e.tipo, `F${e.tipo} ${e.nro}`, e.proveedor||'', e.cuit||'',
-        CATEGORIES[e.categoria]?.label||e.categoria, `${e.alicuota}%`,
+        CATEGORIES[e.categoria]?.label||e.categoria, aliLabel,
         fmtN(b.n21), fmtN(b.i21), fmtN(b.n105), fmtN(b.i105),
         fmtN(b.n27), fmtN(b.i27), fmtN(b.noG), fmtN(0), fmtN(e.total)];
     });
@@ -257,8 +258,8 @@ async function exportPDF(entries, tipo, period, clienteNombre) {
       head: [['Fecha','Tipo','Comprobante','Proveedor','CUIT','Categoría','Alíc%','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Neto 27%','IVA 27%','No Gravado','Exento','Total']],
       body, foot, headStyles, footStyles, styles: baseStyles,
       columnStyles: {
-        0:{cellWidth:13}, 1:{cellWidth:7}, 2:{cellWidth:22}, 3:{cellWidth:28},
-        4:{cellWidth:22}, 5:{cellWidth:16}, 6:{cellWidth:8,...R},
+        0:{cellWidth:18}, 1:{cellWidth:7}, 2:{cellWidth:22}, 3:{cellWidth:28},
+        4:{cellWidth:22}, 5:{cellWidth:16}, 6:{cellWidth:14,...R},
         7:{cellWidth:18,...R}, 8:{cellWidth:15,...R}, 9:{cellWidth:18,...R},
         10:{cellWidth:15,...R}, 11:{cellWidth:14,...R}, 12:{cellWidth:12,...R},
         13:{cellWidth:14,...R}, 14:{cellWidth:12,...R}, 15:{cellWidth:18,...R},
