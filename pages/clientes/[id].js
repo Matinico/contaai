@@ -199,56 +199,96 @@ async function exportARCA(compras, ventas, period) {
   a.click();
 }
 
-function exportPDF(entries, tipo, period, clienteNombre) {
+async function exportPDF(entries, tipo, period, clienteNombre) {
+  if (!entries.length) return;
+
+  const { jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+
+  const isC  = tipo === 'compras';
   const fmtN = n => (Number(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const isC = tipo === 'compras';
-  const cols = isC
-    ? ['Fecha','Comprobante','Proveedor','CUIT','Concepto','Cat.','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Neto 27%','IVA 27%','No Grav.','Exento','Total']
-    : ['Fecha','Comprobante','Cliente','CUIT','Concepto','Cat.','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Total'];
-  const rows = entries.map(e => {
-    const ali = Number(e.alicuota);
-    const n21 = ali===21?e.neto:0, i21=ali===21?e.iva:0;
-    const n105=ali===10.5?e.neto:0, i105=ali===10.5?e.iva:0;
-    const n27 =ali===27?e.neto:0,  i27 =ali===27?e.iva:0;
-    const noG =ali===0?e.neto:0;
-    const cells = isC
-      ? [e.fecha,`F${e.tipo} ${e.nro}`,e.proveedor||'',e.cuit||'',e.concepto||'',CATEGORIES[e.categoria]?.label||e.categoria,fmtN(n21),fmtN(i21),fmtN(n105),fmtN(i105),fmtN(n27),fmtN(i27),fmtN(noG),fmtN(0),fmtN(e.total)]
-      : [e.fecha,`F${e.tipo} ${e.nro}`,e.cliente||'',e.cuit_cli||'',e.concepto||'',CATEGORIES[e.categoria]?.label||e.categoria,fmtN(n21),fmtN(i21),fmtN(n105),fmtN(i105),fmtN(e.total)];
-    return `<tr>${cells.map(c=>`<td>${String(c).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</td>`).join('')}</tr>`;
-  }).join('');
-  const sum = (f,fn) => entries.filter(f).reduce((s,e)=>s+fn(e),0);
-  const totCells = isC
-    ? ['','','','','','TOTAL',fmtN(sum(e=>e.alicuota===21,e=>e.neto)),fmtN(sum(e=>e.alicuota===21,e=>e.iva)),fmtN(sum(e=>e.alicuota===10.5,e=>e.neto)),fmtN(sum(e=>e.alicuota===10.5,e=>e.iva)),fmtN(sum(e=>e.alicuota===27,e=>e.neto)),fmtN(sum(e=>e.alicuota===27,e=>e.iva)),fmtN(sum(e=>e.alicuota===0,e=>e.neto)),fmtN(0),fmtN(sum(()=>true,e=>e.total))]
-    : ['','','','','','TOTAL',fmtN(sum(e=>e.alicuota===21,e=>e.neto)),fmtN(sum(e=>e.alicuota===21,e=>e.iva)),fmtN(sum(e=>e.alicuota===10.5,e=>e.neto)),fmtN(sum(e=>e.alicuota===10.5,e=>e.iva)),fmtN(sum(()=>true,e=>e.total))];
-  const totRow = `<tr class="tot">${totCells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+  const today = new Date().toLocaleDateString('es-AR');
   const title = isC ? 'Libro IVA Compras' : 'Libro IVA Ventas';
-  const numCols = cols.length;
-  const rightFrom = isC ? 7 : 7;
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>${title} — ${clienteNombre} — ${period}</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',system-ui,sans-serif;font-size:9.5px;color:#1e293b;padding:18px;}
-h1{font-size:15px;color:#1a3a5c;margin-bottom:3px;}
-.sub{font-size:11px;color:#64748b;margin-bottom:14px;}
-table{width:100%;border-collapse:collapse;}
-th{background:#1a3a5c;color:white;padding:5px 5px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
-td{padding:3.5px 5px;border-bottom:1px solid #e2e8f0;}
-tbody tr:hover td{background:#f8fafc;}
-.tot td{font-weight:700;background:#f1f5f9;border-top:2px solid #1a3a5c;}
-th:nth-child(n+${rightFrom}),td:nth-child(n+${rightFrom}){text-align:right;font-family:'Courier New',monospace;}
-@media print{body{padding:8px;}@page{size:landscape;margin:8mm;}}
-</style></head><body>
-<h1>${title} — ${clienteNombre}</h1>
-<div class="sub">Período: ${period} &nbsp;·&nbsp; ${entries.length} comprobante${entries.length!==1?'s':''}</div>
-<table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-<tbody>${rows}${totRow}</tbody></table>
-</body></html>`;
-  const w = window.open('', '_blank');
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-  setTimeout(() => w.print(), 400);
+
+  function breakdown(e) {
+    const hasB = (e.neto21||0) + (e.neto105||0) + (e.neto27||0) > 0;
+    const a    = Number(e.alicuota);
+    return {
+      n21:  hasB ? (e.neto21||0)  : (a===21   ? e.neto : 0),
+      i21:  hasB ? (e.iva21||0)   : (a===21   ? e.iva  : 0),
+      n105: hasB ? (e.neto105||0) : (a===10.5 ? e.neto : 0),
+      i105: hasB ? (e.iva105||0)  : (a===10.5 ? e.iva  : 0),
+      n27:  hasB ? (e.neto27||0)  : (a===27   ? e.neto : 0),
+      i27:  hasB ? (e.iva27||0)   : (a===27   ? e.iva  : 0),
+      noG:  hasB ? 0              : (a===0    ? e.neto : 0),
+    };
+  }
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  doc.setFontSize(13); doc.setTextColor(26, 58, 92);
+  doc.text(`${title} — ${clienteNombre}`, 8, 13);
+  doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+  doc.text(`Período: ${period}   ·   ${entries.length} comprobante${entries.length!==1?'s':''}   ·   Generado: ${today}`, 8, 19);
+
+  const NAVY = [26, 58, 92];
+  const FOOT = [241, 245, 249];
+  const headStyles = { fillColor: NAVY, textColor: 255, fontStyle: 'bold', fontSize: 7, cellPadding: 1.5 };
+  const footStyles = { fillColor: FOOT, textColor: [30,41,59], fontStyle: 'bold', fontSize: 7, cellPadding: 1.5 };
+  const baseStyles = { fontSize: 7, cellPadding: 1.5, overflow: 'ellipsize' };
+  const R = { halign: 'right', fontStyle: 'normal' };
+
+  if (isC) {
+    const tots = { n21:0, i21:0, n105:0, i105:0, n27:0, i27:0, noG:0, total:0 };
+    const body = entries.map(e => {
+      const b = breakdown(e);
+      tots.n21 += b.n21; tots.i21 += b.i21; tots.n105 += b.n105; tots.i105 += b.i105;
+      tots.n27 += b.n27; tots.i27 += b.i27; tots.noG += b.noG; tots.total += e.total;
+      return [e.fecha, e.tipo, `F${e.tipo} ${e.nro}`, e.proveedor||'', e.cuit||'',
+        CATEGORIES[e.categoria]?.label||e.categoria, `${e.alicuota}%`,
+        fmtN(b.n21), fmtN(b.i21), fmtN(b.n105), fmtN(b.i105),
+        fmtN(b.n27), fmtN(b.i27), fmtN(b.noG), fmtN(0), fmtN(e.total)];
+    });
+    const foot = [['','','','','','','TOTAL',
+      fmtN(tots.n21), fmtN(tots.i21), fmtN(tots.n105), fmtN(tots.i105),
+      fmtN(tots.n27), fmtN(tots.i27), fmtN(tots.noG), fmtN(0), fmtN(tots.total)]];
+    doc.autoTable({
+      startY: 23,
+      head: [['Fecha','Tipo','Comprobante','Proveedor','CUIT','Categoría','Alíc%','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Neto 27%','IVA 27%','No Gravado','Exento','Total']],
+      body, foot, headStyles, footStyles, styles: baseStyles,
+      columnStyles: {
+        0:{cellWidth:13}, 1:{cellWidth:7}, 2:{cellWidth:22}, 3:{cellWidth:28},
+        4:{cellWidth:22}, 5:{cellWidth:16}, 6:{cellWidth:8,...R},
+        7:{cellWidth:18,...R}, 8:{cellWidth:15,...R}, 9:{cellWidth:18,...R},
+        10:{cellWidth:15,...R}, 11:{cellWidth:14,...R}, 12:{cellWidth:12,...R},
+        13:{cellWidth:14,...R}, 14:{cellWidth:12,...R}, 15:{cellWidth:18,...R},
+      },
+      margin: { left: 8, right: 8 },
+    });
+  } else {
+    const tots = { n21:0, i21:0, n105:0, i105:0, total:0 };
+    const body = entries.map(e => {
+      const b = breakdown(e);
+      tots.n21 += b.n21; tots.i21 += b.i21; tots.n105 += b.n105; tots.i105 += b.i105; tots.total += e.total;
+      return [e.fecha, e.tipo, `F${e.tipo} ${e.nro}`, e.cliente||'', e.cuit_cli||'',
+        fmtN(b.n21), fmtN(b.i21), fmtN(b.n105), fmtN(b.i105), fmtN(e.total)];
+    });
+    const foot = [['','','','','TOTAL',
+      fmtN(tots.n21), fmtN(tots.i21), fmtN(tots.n105), fmtN(tots.i105), fmtN(tots.total)]];
+    doc.autoTable({
+      startY: 23,
+      head: [['Fecha','Tipo','Comprobante','Cliente','CUIT','Neto 21%','IVA 21%','Neto 10,5%','IVA 10,5%','Total']],
+      body, foot, headStyles, footStyles, styles: baseStyles,
+      columnStyles: {
+        0:{cellWidth:16}, 1:{cellWidth:8}, 2:{cellWidth:28}, 3:{cellWidth:50},
+        4:{cellWidth:28}, 5:{cellWidth:24,...R}, 6:{cellWidth:20,...R},
+        7:{cellWidth:24,...R}, 8:{cellWidth:20,...R}, 9:{cellWidth:24,...R},
+      },
+      margin: { left: 10, right: 10 },
+    });
+  }
+
+  doc.save(`ContaAI_${isC?'Compras':'Ventas'}_${clienteNombre.replace(/\s+/g,'_')}_${period.replace('/','_')}.pdf`);
 }
 
 function calcBreakdown(neto, iva, alicuota) {
