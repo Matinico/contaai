@@ -161,7 +161,7 @@ async function exportARCA(compras, ventas, period) {
   function buildAliLines(e, esVenta) {
     if (!['A', 'M'].includes(e.tipo)) return [];
     const { pto, comp } = parseNro(e.nro);
-    const docCuit = padLd(esVenta ? (e.cuit_cli || '') : (e.cuit || ''), 11);
+    const docCuit = padLd(esVenta ? (e.cuit_cli || '') : (e.cuit || ''), 20);
     const cod     = CBTE_COD[e.tipo] || '001';
     const lines   = [];
     const addLine = (neto, iva, pct) => {
