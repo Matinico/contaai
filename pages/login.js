@@ -60,12 +60,29 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === 'register') {
-        const { error: err } = await supabase.auth.signUp({
+        const { data: signUpData, error: err } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { name: name.trim() } },
         });
-        if (err) { setError(err.message); setLoading(false); return; }
+        if (err) {
+          const msg = err.message?.toLowerCase() ?? '';
+          if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+            setError('Este email ya está registrado. Intentá iniciar sesión.');
+          } else if (msg.includes('signup') && msg.includes('not allowed')) {
+            setError('El registro está deshabilitado. Contactá al administrador.');
+          } else {
+            setError(err.message);
+          }
+          setLoading(false);
+          return;
+        }
+        // Email confirmation disabled → session returned immediately → redirect to onboarding
+        if (signUpData?.session) {
+          router.replace('/');
+          return;
+        }
+        // Email confirmation required → show verify screen
         await supabase.auth.signOut();
         setMode('verify-email');
         setLoading(false);
