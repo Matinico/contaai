@@ -1,9 +1,9 @@
 import Head from 'next/head';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import { useAuth } from '../lib/auth-context';
 import { authFetch } from '../lib/auth-fetch';
+import Sidebar from '../components/Sidebar';
 
 const C = {
   bg:     '#f0f2f5',
@@ -26,9 +26,6 @@ function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); 
 export default function Configuracion() {
   const { user, signOut } = useAuth();
   const router  = useRouter();
-  const menuRef = useRef(null);
-
-  const [menu,        setMenu]        = useState(false);
   const [toast,       setToast]       = useState(null);
 
   // Estudio + equipo
@@ -52,12 +49,6 @@ export default function Configuracion() {
   const [copied,    setCopied]    = useState(false);
 
   useEffect(() => { if (user === null) router.replace('/login'); }, [user, router]);
-
-  useEffect(() => {
-    const h = e => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenu(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
 
   useEffect(() => { if (user) loadData(); }, [user]);
 
@@ -131,7 +122,6 @@ export default function Configuracion() {
     setToast({ msg, isErr }); setTimeout(() => setToast(null), 3500);
   }
 
-  const initials = (user?.user_metadata?.name || user?.email || 'U').slice(0, 2).toUpperCase();
   const isAdmin  = rol === 'admin';
 
   if (user === undefined || user === null) {
@@ -140,75 +130,32 @@ export default function Configuracion() {
 
   return (
     <>
-      <Head><title>Configuración — CIA</title></Head>
+      <Head>
+        <title>Configuración — CIA</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+      </Head>
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box;}
         body{background:${C.bg};color:${C.text};font-family:${C.font};min-height:100vh;}
         input,button{font-family:${C.font};}
-        .menu-item:hover{background:#f5f7fa;}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
-      {/* ── TOPBAR ── */}
-      <header style={{ background: C.navy, height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
-              <rect x="8" y="4" width="30" height="38" rx="3" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="2"/>
-              <path d="M15 15h16M15 22h12M15 29h14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              <circle cx="39" cy="40" r="12" fill={C.accent}/>
-              <path d="M33 40l4.5 4.5L46 34" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span style={{ color: 'white', fontWeight: 800, fontSize: 20, letterSpacing: '2px' }}>CIA</span>
-          </Link>
-        </div>
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <Sidebar user={user} rol={rol} onSignOut={() => signOut().then(() => router.replace('/login'))} />
 
-        <div ref={menuRef} style={{ position: 'relative' }}>
-          <button onClick={() => setMenu(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 8, padding: '6px 12px 6px 8px', color: 'white', cursor: 'pointer' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.navy }}>
-              {initials}
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.user_metadata?.name || user?.email}
-            </span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/></svg>
-          </button>
+        <div style={{ marginLeft: 240, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0 }}>
 
-          {menu && (
-            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, width: 230, boxShadow: '0 8px 28px rgba(0,0,0,0.13)', overflow: 'hidden', animation: 'fadeIn 0.15s ease', zIndex: 100 }}>
-              <div style={{ padding: '14px 16px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{user?.user_metadata?.name || '—'}</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{user?.email}</div>
-              </div>
-              <div style={{ padding: '6px 0' }}>
-                <Link href="/dashboard" onClick={() => setMenu(false)} className="menu-item"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="1" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/></svg>
-                  Dashboard
-                </Link>
-                <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
-                <button onClick={() => signOut().then(() => router.replace('/login'))} className="menu-item"
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.red, fontWeight: 600, textAlign: 'left' }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 10l3-3-3-3M12 7H5M5 2H2v10h3" stroke={C.red} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Cerrar sesión
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
+          {/* Topbar */}
+          <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 30 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.navy }}>Configuración</span>
+          </div>
 
-      {/* ── BODY ── */}
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '36px 24px' }}>
-
-        {/* Breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28, fontSize: 13 }}>
-          <Link href="/dashboard" style={{ color: C.muted, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
-          <span style={{ color: C.border }}>›</span>
-          <span style={{ color: C.text, fontWeight: 600 }}>Configuración</span>
-        </div>
+          {/* ── BODY ── */}
+          <main style={{ flex: 1, maxWidth: 760, width: '100%', margin: '0 auto', padding: '36px 24px' }}>
 
         {/* ── Mi estudio (admin only) ── */}
         {isAdmin && (
@@ -316,7 +263,9 @@ export default function Configuracion() {
             </div>
           </div>
         </section>
-      </main>
+          </main>
+        </div>
+      </div>
 
       {/* ── MODAL: editar estudio ── */}
       {editModal && (
