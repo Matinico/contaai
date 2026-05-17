@@ -59,7 +59,7 @@ function Navbar() {
         {/* Logo */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
           <LogoIcon size={32} light />
-          <span style={{ fontFamily: SYNE, fontWeight: 800, fontSize: 22, color: C.navy, letterSpacing: '2px' }}>CIA</span>
+          <span style={{ fontFamily: SYNE, fontWeight: 800, fontSize: 22, color: C.navy }}>CIA</span>
         </Link>
 
         {/* Nav links – desktop */}
@@ -182,7 +182,7 @@ function Hero() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <LogoIcon size={22} light/>
-                <span style={{ fontFamily: SYNE, fontSize: 14, fontWeight: 800, color: C.navy, letterSpacing: '1.5px' }}>CIA</span>
+                <span style={{ fontFamily: SYNE, fontSize: 14, fontWeight: 800, color: C.navy }}>CIA</span>
               </div>
               <span style={{ fontFamily: FONT, fontSize: 11, color: C.muted }}>Dashboard</span>
             </div>
@@ -557,7 +557,7 @@ function Footer() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <LogoIcon size={28}/>
-              <span style={{ fontFamily: SYNE, fontWeight: 800, fontSize: 20, color: '#fff', letterSpacing: '2px' }}>CIA</span>
+              <span style={{ fontFamily: SYNE, fontWeight: 800, fontSize: 20, color: '#fff' }}>CIA</span>
             </div>
             <p style={{ fontFamily: FONT, fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: 220 }}>
               Contabilidad con Inteligencia Artificial. Diseñado para estudios contables argentinos.
