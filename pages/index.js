@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
+import  Link from 'next/link';
 
 const C = {
   navy:    '#1a3a5c',
