@@ -60,32 +60,29 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === 'register') {
-        const { data: signUpData, error: err } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { name: name.trim() } },
+        // Use server-side admin API to avoid Supabase /auth/v1/signup 500 errors
+        // (caused by failing DB triggers or broken SMTP config on that endpoint)
+        const r = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name: name.trim() }),
         });
-        if (err) {
-          const msg = err.message?.toLowerCase() ?? '';
-          if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
-            setError('Este email ya está registrado. Intentá iniciar sesión.');
-          } else if (msg.includes('signup') && msg.includes('not allowed')) {
-            setError('El registro está deshabilitado. Contactá al administrador.');
-          } else {
-            setError(err.message);
-          }
+        const body = await r.json();
+        if (!r.ok) {
+          setError(r.status === 409
+            ? 'Este email ya está registrado. Intentá iniciar sesión.'
+            : body.error || 'Error al crear la cuenta.');
           setLoading(false);
           return;
         }
-        // Email confirmation disabled → session returned immediately → redirect to onboarding
-        if (signUpData?.session) {
-          router.replace('/dashboard');
+        // Account created — sign in immediately (email is pre-confirmed)
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInErr) {
+          setError('Cuenta creada, pero no se pudo iniciar sesión automáticamente. Intentá ingresar manualmente.');
+          setLoading(false);
           return;
         }
-        // Email confirmation required → show verify screen
-        await supabase.auth.signOut();
-        setMode('verify-email');
-        setLoading(false);
+        router.replace('/dashboard');
         return;
       }
 
