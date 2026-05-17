@@ -15,32 +15,33 @@ const C = {
 const FONT = "'Inter','Segoe UI',system-ui,sans-serif";
 const SYNE = "'Syne','Inter',system-ui,sans-serif";
 
+// activeOn: array of path prefixes that make this item highlighted
 const NAV_GROUPS = [
   {
     section: 'Principal',
     items: [
-      { href: '/dashboard',     icon: '🏠', label: 'Dashboard' },
-      { href: '/clientes',      icon: '👥', label: 'Clientes',        badgeKey: 'clientCount' },
+      { href: '/dashboard', icon: '🏠', label: 'Dashboard',       activeOn: ['/dashboard'] },
+      { href: '/dashboard', icon: '👥', label: 'Clientes',        activeOn: ['/clientes'], badgeKey: 'clientCount' },
     ],
   },
   {
     section: 'Módulos',
     items: [
-      { href: null,             icon: '📋', label: 'Liquidación IVA' },
-      { href: null,             icon: '💼', label: 'Sueldos',         soon: true },
-      { href: null,             icon: '📊', label: 'Ing. Brutos',     soon: true },
+      { href: null, icon: '📋', label: 'Liquidación IVA', activeOn: ['/clientes'] },
+      { href: null, icon: '💼', label: 'Sueldos',         soon: true },
+      { href: null, icon: '📊', label: 'Ing. Brutos',     soon: true },
     ],
   },
   {
     section: 'Estudio',
     items: [
-      { href: '/configuracion', icon: '⚙️', label: 'Configuración' },
+      { href: '/configuracion', icon: '⚙️', label: 'Configuración', activeOn: ['/configuracion'] },
       { href: null,             icon: '👤', label: 'Usuarios' },
     ],
   },
 ];
 
-export default function Sidebar({ activePage, clientCount, user, rol, onSignOut }) {
+export default function Sidebar({ clientCount, user, rol, onSignOut }) {
   const router       = useRouter();
   const menuRef      = useRef(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -55,15 +56,22 @@ export default function Sidebar({ activePage, clientCount, user, rol, onSignOut 
 
   const name    = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Usuario';
   const initial = name.charAt(0).toUpperCase();
-  const active  = (href) => href && (router.pathname === href || activePage === href);
+
+  function isActive(item) {
+    if (!item.activeOn) return false;
+    const path = router.pathname;
+    return item.activeOn.some(prefix => path === prefix || path.startsWith(prefix + '/'));
+  }
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
-        .sb-item { transition: background 0.12s, color 0.12s; }
-        .sb-item:hover { background: #f1f5f9 !important; color: ${C.text} !important; }
-        .sb-item.active { background: #eff6ff !important; color: ${C.navy} !important; }
+        .sb-link { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; font-size:13px; font-weight:500; text-decoration:none; margin-bottom:1px; user-select:none; transition:background 0.12s, color 0.12s; border-left:3px solid transparent; color:${C.muted}; cursor:pointer; }
+        .sb-link:hover { background:#f1f5f9; color:${C.text}; }
+        .sb-link.active { background:#eff6ff; color:${C.navy}; border-left:3px solid ${C.navy}; font-weight:600; }
+        .sb-disabled { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; font-size:13px; font-weight:500; margin-bottom:1px; user-select:none; border-left:3px solid transparent; color:${C.muted}; cursor:default; }
+        .sb-disabled.active { background:#eff6ff; color:${C.navy}; border-left:3px solid ${C.navy}; font-weight:600; }
       `}</style>
 
       <aside style={{
@@ -91,32 +99,15 @@ export default function Sidebar({ activePage, clientCount, user, rol, onSignOut 
         <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 10px' }}>
           {NAV_GROUPS.map(group => (
             <div key={group.section} style={{ marginBottom: 22 }}>
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: C.muted,
-                textTransform: 'uppercase', letterSpacing: '0.08em',
-                padding: '0 10px', marginBottom: 4,
-              }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 10px', marginBottom: 4 }}>
                 {group.section}
               </div>
 
               {group.items.map(item => {
-                const isActive = active(item.href);
-                const badge = item.badgeKey === 'clientCount' && clientCount != null ? clientCount : null;
+                const active = isActive(item);
+                const badge  = item.badgeKey === 'clientCount' && clientCount != null ? clientCount : null;
 
-                const baseStyle = {
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '8px 10px', borderRadius: 7,
-                  fontSize: 13, fontWeight: isActive ? 600 : 500,
-                  color: isActive ? C.navy : C.muted,
-                  background: isActive ? '#eff6ff' : 'transparent',
-                  borderLeft: isActive ? `3px solid ${C.navy}` : '3px solid transparent',
-                  textDecoration: 'none',
-                  cursor: item.href ? 'pointer' : 'default',
-                  marginBottom: 1,
-                  userSelect: 'none',
-                };
-
-                const inner = (
+                const content = (
                   <>
                     <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
                     <span style={{ flex: 1 }}>{item.label}</span>
@@ -135,16 +126,14 @@ export default function Sidebar({ activePage, clientCount, user, rol, onSignOut 
 
                 if (item.href) {
                   return (
-                    <Link key={item.label} href={item.href}
-                      className={`sb-item${isActive ? ' active' : ''}`}
-                      style={baseStyle}>
-                      {inner}
+                    <Link key={item.label} href={item.href} className={`sb-link${active ? ' active' : ''}`}>
+                      {content}
                     </Link>
                   );
                 }
                 return (
-                  <div key={item.label} style={baseStyle}>
-                    {inner}
+                  <div key={item.label} className={`sb-disabled${active ? ' active' : ''}`}>
+                    {content}
                   </div>
                 );
               })}
