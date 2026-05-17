@@ -3,6 +3,6 @@ import { useRouter } from 'next/router';
 
 export default function IvaRedirect() {
   const router = useRouter();
-  useEffect(() => { router.replace('/'); }, [router]);
+  useEffect(() => { router.replace('/dashboard'); }, [router]);
   return null;
 }

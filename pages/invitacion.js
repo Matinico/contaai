@@ -72,7 +72,7 @@ export default function Invitacion() {
       const data = await r.json();
       if (!r.ok) { setError(data.error); setSaving(false); return; }
       setDone(true);
-      setTimeout(() => router.replace('/'), 2000);
+      setTimeout(() => router.replace('/dashboard'), 2000);
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
       setSaving(false);
@@ -107,7 +107,7 @@ export default function Invitacion() {
       // Auto-login after account creation
       await supabase.auth.signInWithPassword({ email: inv.email, password });
       setDone(true);
-      setTimeout(() => router.replace('/'), 2000);
+      setTimeout(() => router.replace('/dashboard'), 2000);
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
       setSaving(false);

@@ -79,7 +79,7 @@ export default function Login() {
         }
         // Email confirmation disabled → session returned immediately → redirect to onboarding
         if (signUpData?.session) {
-          router.replace('/');
+          router.replace('/dashboard');
           return;
         }
         // Email confirmation required → show verify screen
@@ -102,7 +102,7 @@ export default function Login() {
         return;
       }
 
-      router.replace('/');
+      router.replace('/dashboard');
 
     } catch {
       setError('Error de conexión. Intentá de nuevo.');

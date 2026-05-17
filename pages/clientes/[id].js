@@ -669,7 +669,7 @@ export default function ClienteDetalle() {
       {/* ── TOPBAR ── */}
       <header style={{ background: C.navy, height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
               <rect x="8" y="4" width="30" height="38" rx="3" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="2"/>
               <path d="M15 15h16M15 22h12M15 29h14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
@@ -725,7 +725,7 @@ export default function ClienteDetalle() {
 
         {/* Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 22, fontSize: 13 }}>
-          <Link href="/" style={{ color: C.muted, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
+          <Link href="/dashboard" style={{ color: C.muted, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
           <span style={{ color: C.border }}>›</span>
           <span style={{ color: C.text, fontWeight: 600 }}>
             {pageLoading ? '…' : cliente?.nombre || 'Cliente'}

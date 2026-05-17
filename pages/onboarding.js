@@ -48,7 +48,7 @@ export default function Onboarding() {
     if (!user) return;
     authFetch('/api/onboarding')
       .then(r => r.json())
-      .then(d => { if (d.completed) router.replace('/'); })
+      .then(d => { if (d.completed) router.replace('/dashboard'); })
       .catch(() => {});
   }, [user, router]);
 
@@ -73,7 +73,7 @@ export default function Onboarding() {
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error || 'Error al guardar. Intentá de nuevo.'); return; }
-      router.replace('/');
+      router.replace('/dashboard');
     } catch {
       setError('Error de conexión. Intentá de nuevo.');
     } finally {

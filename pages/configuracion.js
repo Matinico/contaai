@@ -71,7 +71,7 @@ export default function Configuracion() {
         setDataLoading(false);
         return;
       }
-      if (d.rol === 'operador') { router.replace('/'); return; }
+      if (d.rol === 'operador') { router.replace('/dashboard'); return; }
       setEstudioData(d.estudio);
       setMiembros(d.miembros || []);
       setRol(d.rol);
@@ -153,7 +153,7 @@ export default function Configuracion() {
       {/* ── TOPBAR ── */}
       <header style={{ background: C.navy, height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
               <rect x="8" y="4" width="30" height="38" rx="3" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="2"/>
               <path d="M15 15h16M15 22h12M15 29h14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
@@ -183,7 +183,7 @@ export default function Configuracion() {
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{user?.email}</div>
               </div>
               <div style={{ padding: '6px 0' }}>
-                <Link href="/" onClick={() => setMenu(false)} className="menu-item"
+                <Link href="/dashboard" onClick={() => setMenu(false)} className="menu-item"
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', fontSize: 13, color: C.text, textDecoration: 'none' }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="1" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="1" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/><rect x="8" y="8" width="5" height="5" rx="1" stroke={C.muted} strokeWidth="1.3"/></svg>
                   Dashboard
@@ -205,7 +205,7 @@ export default function Configuracion() {
 
         {/* Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28, fontSize: 13 }}>
-          <Link href="/" style={{ color: C.muted, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
+          <Link href="/dashboard" style={{ color: C.muted, textDecoration: 'none', fontWeight: 500 }}>Inicio</Link>
           <span style={{ color: C.border }}>›</span>
           <span style={{ color: C.text, fontWeight: 600 }}>Configuración</span>
         </div>
