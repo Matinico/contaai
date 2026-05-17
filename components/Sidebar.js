@@ -12,8 +12,7 @@ const C = {
   orange: '#f97316',
 };
 
-const FONT = "'Inter','Segoe UI',system-ui,sans-serif";
-const SYNE = "'Syne','Inter',system-ui,sans-serif";
+import { FONT, SYNE } from '../lib/fonts';
 
 // activeOn: array of path prefixes that make this item highlighted
 const NAV_GROUPS = [
@@ -67,8 +66,7 @@ export default function Sidebar({ clientCount, user, rol, onSignOut }) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap');
-        .sb-link { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; font-size:13px; font-weight:500; text-decoration:none; margin-bottom:1px; user-select:none; transition:background 0.12s, color 0.12s; border-left:3px solid transparent; color:${C.muted}; cursor:pointer; }
+.sb-link { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; font-size:13px; font-weight:500; text-decoration:none; margin-bottom:1px; user-select:none; transition:background 0.12s, color 0.12s; border-left:3px solid transparent; color:${C.muted}; cursor:pointer; }
         .sb-link:hover { background:#f1f5f9; color:${C.text}; }
         .sb-link.active { background:#eff6ff; color:${C.navy}; border-left:3px solid ${C.navy}; font-weight:600; }
         .sb-disabled { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; font-size:13px; font-weight:500; margin-bottom:1px; user-select:none; border-left:3px solid transparent; color:${C.muted}; cursor:default; }

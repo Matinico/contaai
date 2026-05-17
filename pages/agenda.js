@@ -20,8 +20,7 @@ const C = {
   border: '#e2e8f0',
 };
 
-const FONT = "'Inter','Segoe UI',system-ui,sans-serif";
-const SYNE = "'Syne','Inter',system-ui,sans-serif";
+import { FONT, SYNE } from '../lib/fonts';
 
 function urgenciaConfig(diasRestantes) {
   if (diasRestantes < 3)  return { color: C.red,    bg: '#fef2f2',  label: diasRestantes <= 0 ? 'Vencido' : `${diasRestantes}d` };
@@ -109,9 +108,6 @@ export default function Agenda() {
     <>
       <Head>
         <title>CIA — Agenda de vencimientos</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
       </Head>
 
       <style>{`

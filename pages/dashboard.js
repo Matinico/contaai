@@ -21,8 +21,7 @@ const C = {
   border: '#e2e8f0',
 };
 
-const FONT = "'Inter','Segoe UI',system-ui,sans-serif";
-const SYNE = "'Syne','Inter',system-ui,sans-serif";
+import { FONT, SYNE } from '../lib/fonts';
 
 const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
 const inp = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 13, outline: 'none', fontFamily: FONT };
@@ -236,9 +235,6 @@ export default function Dashboard() {
     <>
       <Head>
         <title>CIA — Dashboard</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
       </Head>
 
       <style>{`
