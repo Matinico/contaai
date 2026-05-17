@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth-context';
 import { authFetch } from '../lib/auth-fetch';
 import { useRole } from '../lib/use-role';
 import Sidebar from '../components/Sidebar';
+import { proximosVencimientos } from '../lib/vencimientos';
 
 const C = {
   navy:   '#1a3a5c',
@@ -205,8 +206,9 @@ export default function Dashboard() {
   const estudio = user?.user_metadata?.estudio || '';
 
   // Derived KPIs
-  const activos     = clientes.length;
-  const pendientes  = clientes.filter(c => clienteEstado(c).label === 'Pendiente').length;
+  const activos         = clientes.length;
+  const pendientes      = clientes.filter(c => clienteEstado(c).label === 'Pendiente').length;
+  const vencen7dias     = loading ? 0 : proximosVencimientos(clientes, 7).length;
 
   // Filtered clients for table
   const clientesFiltrados = clientes.filter(c => {
@@ -218,12 +220,17 @@ export default function Dashboard() {
     return matchSearch && matchFilter;
   });
 
-  // Mock upcoming due dates
-  const vencimientos = [
-    { fecha: '20/05/2026', desc: 'IVA — Período abril', urgencia: 'alta' },
-    { fecha: '26/05/2026', desc: 'Ganancias 4ta cat.',  urgencia: 'media' },
-    { fecha: '10/06/2026', desc: 'IVA — Período mayo',  urgencia: 'baja' },
-  ];
+  const proximos = proximosVencimientos(clientes, 60).slice(0, 5);
+
+  const vencimientos = proximos.map(v => {
+    const urgencia = v.diasRestantes <= 2 ? 'alta' : v.diasRestantes <= 7 ? 'media' : 'baja';
+    return {
+      fecha: v.fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      desc: `${v.clienteNombre} — IVA ${v.periodo}`,
+      urgencia,
+      diasRestantes: v.diasRestantes,
+    };
+  });
 
   return (
     <>
@@ -284,7 +291,7 @@ export default function Dashboard() {
               <KpiCard label="Clientes activos"         value={loading ? '…' : activos}    sub="en el estudio"           accent={C.navy}   icon="👥" />
               <KpiCard label="Facturas procesadas"      value="—"                           sub="este período"             accent={C.blue}   icon="📄" />
               <KpiCard label="Crédito fiscal (cartera)" value="—"                           sub="IVA compras consolidado"  accent={C.green}  icon="💰" />
-              <KpiCard label="Vencimientos próximos"    value={loading ? '…' : pendientes}  sub="clientes pendientes"      accent={C.orange} icon="⏰" />
+              <KpiCard label="Vencimientos próximos"    value={loading ? '…' : vencen7dias}  sub="vencen en 7 días"         accent={C.orange} icon="⏰" />
             </div>
 
             {/* ── Main grid ── */}
@@ -406,22 +413,30 @@ export default function Dashboard() {
 
                 {/* Próximos vencimientos */}
                 <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 15 }}>⏰</span>
-                    <h3 style={{ fontFamily: SYNE, fontSize: 13, fontWeight: 700, color: C.text }}>Próximos vencimientos</h3>
+                  <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 15 }}>⏰</span>
+                      <h3 style={{ fontFamily: SYNE, fontSize: 13, fontWeight: 700, color: C.text }}>Próximos vencimientos</h3>
+                    </div>
+                    <Link href="/agenda" style={{ fontSize: 11, fontWeight: 600, color: C.blue, textDecoration: 'none' }}>Ver agenda →</Link>
                   </div>
                   <div style={{ padding: '8px 0' }}>
-                    {vencimientos.map((v, i) => {
-                      const urgColor = v.urgencia === 'alta' ? C.red : v.urgencia === 'media' ? C.orange : C.muted;
-                      const urgBg    = v.urgencia === 'alta' ? '#fef2f2' : v.urgencia === 'media' ? '#fff7ed' : '#f1f5f9';
+                    {loading ? (
+                      <div style={{ padding: '20px 18px', textAlign: 'center', color: C.muted, fontSize: 12 }}>Cargando…</div>
+                    ) : vencimientos.length === 0 ? (
+                      <div style={{ padding: '20px 18px', textAlign: 'center', color: C.muted, fontSize: 12 }}>Sin vencimientos en los próximos 60 días</div>
+                    ) : vencimientos.map((v, i) => {
+                      const urgColor = v.urgencia === 'alta' ? C.red : v.urgencia === 'media' ? C.orange : '#15803d';
+                      const urgBg    = v.urgencia === 'alta' ? '#fef2f2' : v.urgencia === 'media' ? '#fff7ed' : '#dcfce7';
+                      const urgLabel = v.urgencia === 'alta' ? 'Urgente' : v.urgencia === 'media' ? `${v.diasRestantes}d` : `${v.diasRestantes}d`;
                       return (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: i < vencimientos.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{v.desc}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.desc}</div>
                             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{v.fecha}</div>
                           </div>
-                          <span style={{ background: urgBg, color: urgColor, fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '2px 8px', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
-                            {v.urgencia}
+                          <span style={{ background: urgBg, color: urgColor, fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                            {urgLabel}
                           </span>
                         </div>
                       );

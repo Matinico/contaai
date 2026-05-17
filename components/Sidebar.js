@@ -27,9 +27,10 @@ const NAV_GROUPS = [
   {
     section: 'Módulos',
     items: [
-      { href: null, icon: '📋', label: 'Liquidación IVA', activeOn: ['/clientes'] },
-      { href: null, icon: '💼', label: 'Sueldos',         soon: true },
-      { href: null, icon: '📊', label: 'Ing. Brutos',     soon: true },
+      { href: null,      icon: '📋', label: 'Liquidación IVA', activeOn: ['/clientes'] },
+      { href: '/agenda', icon: '📅', label: 'Agenda',          activeOn: ['/agenda'] },
+      { href: null,      icon: '💼', label: 'Sueldos',         soon: true },
+      { href: null,      icon: '📊', label: 'Ing. Brutos',     soon: true },
     ],
   },
   {
