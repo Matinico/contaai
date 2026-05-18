@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth-context';
 import { authFetch } from '../lib/auth-fetch';
 import { useRole } from '../lib/use-role';
 import Sidebar from '../components/Sidebar';
-import { proximosVencimientos } from '../lib/vencimientos';
+import { proximosVencimientos, vencimientoIVA } from '../lib/vencimientos';
 
 const C = {
   navy:   '#1a3a5c',
@@ -207,9 +207,17 @@ export default function Dashboard() {
   const estudio = user?.user_metadata?.estudio || '';
 
   // Derived KPIs
-  const activos         = clientes.length;
-  const pendientes      = clientes.filter(c => clienteEstado(c).label === 'Pendiente').length;
-  const vencen7dias     = loading ? 0 : proximosVencimientos(clientes, 7).length;
+  const activos     = clientes.length;
+  const pendientes  = clientes.filter(c => clienteEstado(c).label === 'Pendiente').length;
+  const vencen7dias = loading ? 0 : proximosVencimientos(clientes, 7).length;
+
+  const ivaVencidoEsteMes = loading ? 0 : (() => {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const mes = hoy.getMonth();
+    return clientes.filter(c =>
+      (c.empresas || []).some(e => e.cuit && vencimientoIVA(e.cuit, mes) < hoy)
+    ).length;
+  })();
 
   // Filtered clients for table
   const clientesFiltrados = clientes.filter(c => {
@@ -285,9 +293,10 @@ export default function Dashboard() {
             </div>
 
             {/* ── KPI Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 28 }} className="kpi-grid">
-              <KpiCard label="Clientes activos"      value={loading ? '…' : activos}     sub="en el estudio"    accent={C.navy}   icon="👥" />
-              <KpiCard label="Vencimientos próximos" value={loading ? '…' : vencen7dias} sub="vencen en 7 días" accent={C.orange} icon="⏰" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="kpi-grid">
+              <KpiCard label="Clientes activos"      value={loading ? '…' : activos}           sub="en el estudio"                accent={C.navy}   icon="👥" />
+              <KpiCard label="Vencimientos próximos" value={loading ? '…' : vencen7dias}       sub="vencen en 7 días"             accent={C.orange} icon="⏰" />
+              <KpiCard label="IVA vencido este mes"  value={loading ? '…' : ivaVencidoEsteMes} sub="vencimiento ya pasó este mes" accent={C.red}    icon="⚠️" />
             </div>
 
             {/* ── Main grid ── */}
