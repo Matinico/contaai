@@ -446,31 +446,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Posición IVA consolidada */}
-                <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h3 style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: C.text }}>Posición IVA (cartera)</h3>
-                  </div>
-                  <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {[
-                      { label: 'Débito fiscal total',  value: '—', color: C.red  },
-                      { label: 'Crédito fiscal total', value: '—', color: C.green },
-                    ].map(row => (
-                      <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 12, color: C.muted }}>{row.label}</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
-                      </div>
-                    ))}
-                    <div style={{ height: 1, background: C.border, margin: '2px 0' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Saldo neto</span>
-                      <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: C.green }}>—</span>
-                    </div>
-                    <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginTop: 4 }}>
-                      El consolidado de IVA estará disponible cuando se procesen facturas de los clientes.
-                    </p>
-                  </div>
-                </div>
 
               </div>
             </div>
