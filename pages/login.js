@@ -1,31 +1,76 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import { supabase } from '../lib/supabase-browser';
 
+const FONT = "Arial, sans-serif";
+
 const C = {
-  bg:     '#f0f2f5',
   navy:   '#1a3a5c',
-  accent: '#7eb8f7',
+  blue:   '#2563eb',
   white:  '#ffffff',
   text:   '#1e293b',
   muted:  '#64748b',
-  border: '#dde1e7',
+  border: '#e2e8f0',
   red:    '#dc2626',
-  font:   "system-ui,-apple-system,'Segoe UI',sans-serif",
+  bg:     '#f8fafc',
 };
 
-function LogoCIA() {
+// ── Left column — marketing panel ─────────────────────────────────────────────
+function LeftPanel() {
+  const checks = [
+    'Lectura automática con IA',
+    'Libro IVA digital',
+    'Exportación TXT compatible con ARCA',
+  ];
   return (
-    <div style={{ textAlign: 'center', marginBottom: 28 }}>
-      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8" y="4" width="30" height="38" rx="3" fill={C.white} stroke={C.navy} strokeWidth="2"/>
-        <path d="M15 15h16M15 22h12M15 29h14" stroke={C.navy} strokeWidth="1.8" strokeLinecap="round"/>
-        <circle cx="39" cy="40" r="12" fill={C.accent}/>
-        <path d="M33 40l4.5 4.5L46 34" stroke={C.white} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      <div style={{ fontSize: 30, fontWeight: 800, color: C.navy, letterSpacing: '2px', marginTop: 10, lineHeight: 1 }}>CIA</div>
-      <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Tu estudio ahora es inteligente</div>
+    <div style={{
+      width: '45%', minHeight: '100vh', background: C.navy,
+      display: 'flex', flexDirection: 'column', padding: '40px 48px',
+      fontFamily: FONT,
+    }}>
+      {/* Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 'auto' }}>
+        <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
+          <rect x="8" y="4" width="30" height="38" rx="3" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.7)" strokeWidth="2"/>
+          <path d="M15 15h16M15 22h12M15 29h14" stroke="rgba(255,255,255,0.7)" strokeWidth="1.8" strokeLinecap="round"/>
+          <circle cx="39" cy="40" r="12" fill="#7eb8f7"/>
+          <path d="M33 40l4.5 4.5L46 34" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 20, color: C.white, letterSpacing: '2px' }}>CIA</span>
+      </div>
+
+      {/* Hero text — centered vertically */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBottom: 40 }}>
+        <h1 style={{
+          fontFamily: FONT, fontSize: 36, fontWeight: 800, color: C.white,
+          lineHeight: 1.2, marginBottom: 20, letterSpacing: '-0.5px',
+        }}>
+          Tu estudio,<br />potenciado por IA.
+        </h1>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', lineHeight: 1.7, maxWidth: 340 }}>
+          CIA automatiza la lectura de facturas, el armado del libro IVA y la generación del TXT para ARCA.
+        </p>
+      </div>
+
+      {/* Bullets */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {checks.map(text => (
+          <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 20, height: 20, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke={C.white} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -34,13 +79,13 @@ function LogoCIA() {
 export default function Login() {
   const router = useRouter();
 
-  const [mode,    setMode]    = useState('login');
-  const [name,    setName]    = useState('');
-  const [email,   setEmail]   = useState('');
-  const [password,setPassword]= useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error,   setError]   = useState('');
-  const [loading, setLoading] = useState(false);
+  const [mode,     setMode]     = useState('login');
+  const [name,     setName]     = useState('');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm,  setConfirm]  = useState('');
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
   function switchMode(m) {
     setMode(m); setError('');
@@ -52,16 +97,14 @@ export default function Login() {
     setError('');
 
     if (mode === 'register') {
-      if (!name.trim())        { setError('El nombre es obligatorio.'); return; }
-      if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
-      if (password !== confirm) { setError('Las contraseñas no coinciden.'); return; }
+      if (!name.trim())         { setError('El nombre es obligatorio.'); return; }
+      if (password.length < 6)  { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
+      if (password !== confirm)  { setError('Las contraseñas no coinciden.'); return; }
     }
 
     setLoading(true);
     try {
       if (mode === 'register') {
-        // Use server-side admin API to avoid Supabase /auth/v1/signup 500 errors
-        // (caused by failing DB triggers or broken SMTP config on that endpoint)
         const r = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -75,7 +118,6 @@ export default function Login() {
           setLoading(false);
           return;
         }
-        // Account created — sign in immediately (email is pre-confirmed)
         const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
         if (signInErr) {
           setError('Cuenta creada, pero no se pudo iniciar sesión automáticamente. Intentá ingresar manualmente.');
@@ -111,32 +153,38 @@ export default function Login() {
 
   const globalStyle = `
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{background:${C.bg};font-family:${C.font};min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-    input,button{font-family:${C.font};}
+    body{font-family:${FONT};min-height:100vh;}
+    input,button{font-family:${FONT};}
     .inp{width:100%;border:1.5px solid ${C.border};border-radius:8px;padding:11px 14px;font-size:14px;color:${C.text};outline:none;background:${C.white};transition:border-color 0.15s;}
     .inp:focus{border-color:${C.navy};}
     .inp::placeholder{color:#b0b8c4;}
-    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   `;
 
-  // ── Verify email post-register ──────────────────────────────────────────
+  // ── Verify email ──────────────────────────────────────────────────────────
   if (mode === 'verify-email') {
     return (
       <>
         <Head><title>CIA — Verificar email</title></Head>
         <style>{globalStyle}</style>
-        <div style={{ width: '100%', maxWidth: 480, animation: 'fadeIn 0.25s ease' }}>
-          <LogoCIA />
-          <div style={card}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={iconCircle}>
-                <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-                  <rect x="2" y="5" width="22" height="16" rx="2.5" stroke={C.navy} strokeWidth="1.8"/>
-                  <path d="M2 8l11 7.5L24 8" stroke={C.navy} strokeWidth="1.6" strokeLinecap="round"/>
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
+          <LeftPanel />
+          <div style={{
+            flex: 1, background: C.white, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 40,
+          }}>
+            <div style={{ maxWidth: 380, width: '100%', textAlign: 'center', animation: 'fadeIn 0.25s ease' }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%', background: '#e8f3fd',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="4" width="20" height="16" rx="2.5" stroke={C.navy} strokeWidth="1.7"/>
+                  <path d="M2 7l10 7 10-7" stroke={C.navy} strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Verificá tu email</h2>
-              <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 24 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 10 }}>Verificá tu email</h2>
+              <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: 28 }}>
                 Te enviamos un enlace a <strong style={{ color: C.text }}>{email}</strong>.<br />
                 Hacé clic en él para activar tu cuenta.
               </p>
@@ -150,66 +198,108 @@ export default function Login() {
     );
   }
 
+  // ── Login / Register ──────────────────────────────────────────────────────
   return (
     <>
       <Head><title>CIA — {isLogin ? 'Iniciar sesión' : 'Crear cuenta'}</title></Head>
       <style>{globalStyle}</style>
 
-      <div style={{ width: '100%', maxWidth: 480, animation: 'fadeIn 0.25s ease' }}>
-        <LogoCIA />
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <LeftPanel />
 
-        <div style={card}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Right column */}
+        <div style={{
+          flex: 1, background: C.white,
+          display: 'flex', flexDirection: 'column',
+          padding: '32px 40px',
+        }}>
+          {/* Top bar */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Link href="/" style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 13, fontWeight: 600, color: C.muted,
+              textDecoration: 'none', padding: '6px 0',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Volver al inicio
+            </Link>
+          </div>
 
-            {!isLogin && (
-              <div>
-                <label style={lbl}>Nombre</label>
-                <input className="inp" value={name} onChange={e => setName(e.target.value)}
-                  placeholder="Tu nombre completo" required />
+          {/* Form — centered */}
+          <div style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{ width: '100%', maxWidth: 380, animation: 'fadeIn 0.25s ease' }}>
+
+              <div style={{ marginBottom: 32 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: C.text, marginBottom: 6 }}>
+                  Ingresá a CIA
+                </h2>
+                <p style={{ fontSize: 14, color: C.muted }}>
+                  {isLogin ? 'Accedé a tu estudio contable' : 'Creá tu cuenta para empezar'}
+                </p>
               </div>
-            )}
 
-            <div>
-              <label style={lbl}>Email</label>
-              <input className="inp" type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="usuario@empresa.com" required />
-            </div>
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            <div>
-              <label style={lbl}>Contraseña</label>
-              <input className="inp" type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required />
-            </div>
+                {!isLogin && (
+                  <div>
+                    <label style={lbl}>Nombre</label>
+                    <input className="inp" value={name} onChange={e => setName(e.target.value)}
+                      placeholder="Tu nombre completo" required />
+                  </div>
+                )}
 
-            {!isLogin && (
-              <div>
-                <label style={lbl}>Confirmar contraseña</label>
-                <input className="inp" type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
-                  placeholder="••••••••" required />
+                <div>
+                  <label style={lbl}>Email</label>
+                  <input className="inp" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="usuario@empresa.com" required />
+                </div>
+
+                <div>
+                  <label style={lbl}>Contraseña</label>
+                  <input className="inp" type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••" required />
+                </div>
+
+                {!isLogin && (
+                  <div>
+                    <label style={lbl}>Confirmar contraseña</label>
+                    <input className="inp" type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
+                      placeholder="••••••••" required />
+                  </div>
+                )}
+
+                {error && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
+                    {error}
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading} style={{ ...btnPrimary(loading), marginTop: 4 }}>
+                  {loading ? 'Procesando…' : isLogin ? 'Ingresar' : 'Crear cuenta'}
+                </button>
+              </form>
+
+              <div style={{ textAlign: 'center', marginTop: 22, fontSize: 13, color: C.muted }}>
+                {isLogin ? (
+                  <>¿No tenés cuenta?{' '}
+                    <button onClick={() => switchMode('register')} style={btnLink}>
+                      Comenzar gratis
+                    </button>
+                  </>
+                ) : (
+                  <>¿Ya tenés cuenta?{' '}
+                    <button onClick={() => switchMode('login')} style={btnLink}>
+                      Ingresá
+                    </button>
+                  </>
+                )}
               </div>
-            )}
 
-            {error && <ErrorBox msg={error} />}
-
-            <button type="submit" disabled={loading} style={{ ...btnPrimary(loading), marginTop: 4 }}>
-              {loading ? 'Procesando…' : isLogin ? 'Ingresar' : 'Crear cuenta'}
-            </button>
-          </form>
-
-          <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: C.muted }}>
-            {isLogin ? (
-              <>¿No tenés cuenta?{' '}
-                <button onClick={() => switchMode('register')} style={btnLink}>
-                  Registrate
-                </button>
-              </>
-            ) : (
-              <>¿Ya tenés cuenta?{' '}
-                <button onClick={() => switchMode('login')} style={btnLink}>
-                  Ingresá
-                </button>
-              </>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -217,34 +307,11 @@ export default function Login() {
   );
 }
 
-function ErrorBox({ msg }) {
-  return (
-    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: C.red }}>
-      {msg}
-    </div>
-  );
-}
-
-const card = {
-  background: C.white,
-  borderRadius: 14,
-  padding: '32px 32px 28px',
-  boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
-};
-
-const iconCircle = {
-  width: 52, height: 52,
-  background: '#e8f3fd',
-  borderRadius: '50%',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  margin: '0 auto 14px',
-};
-
-const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: '#5a6a7a', marginBottom: 6 };
+const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6 };
 
 const btnLink = {
   background: 'none', border: 'none', cursor: 'pointer',
-  color: C.navy, fontWeight: 600, fontSize: 13, padding: 0,
+  color: C.navy, fontWeight: 700, fontSize: 13, padding: 0,
 };
 
 function btnPrimary(isLoading) {
@@ -256,5 +323,6 @@ function btnPrimary(isLoading) {
     fontSize: 14, fontWeight: 700,
     cursor: isLoading ? 'not-allowed' : 'pointer',
     transition: 'background 0.15s',
+    fontFamily: FONT,
   };
 }
