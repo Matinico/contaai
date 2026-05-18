@@ -4,28 +4,17 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../lib/auth-context';
 import { authFetch } from '../lib/auth-fetch';
 import Sidebar from '../components/Sidebar';
+import { useTheme } from '../lib/theme';
 
-const C = {
-  bg:     '#f0f2f5',
-  navy:   '#1a3a5c',
-  accent: '#7eb8f7',
-  white:  '#ffffff',
-  text:   '#1e293b',
-  muted:  '#64748b',
-  border: '#dde1e7',
-  green:  '#16a34a',
-  red:    '#dc2626',
-  font:   "system-ui,-apple-system,'Segoe UI',sans-serif",
-};
-
-const card = { background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' };
-const lbl  = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 14, outline: 'none', fontFamily: C.font };
 function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); if(d.length<=2)return d; if(d.length<=10)return`${d.slice(0,2)}-${d.slice(2)}`; return`${d.slice(0,2)}-${d.slice(2,10)}-${d.slice(10)}`; }
 
 export default function Configuracion() {
   const { user, signOut } = useAuth();
   const router  = useRouter();
+  const { C, isDark, toggleTheme } = useTheme();
+  const card = { background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' };
+  const lbl  = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
+  const inp  = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 14, outline: 'none', fontFamily: C.font };
   const [toast,       setToast]       = useState(null);
 
   // Estudio + equipo
@@ -125,7 +114,7 @@ export default function Configuracion() {
   const isAdmin  = rol === 'admin';
 
   if (user === undefined || user === null) {
-    return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
+    return <div style={{ background: C.pageBg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
   }
 
   return (
@@ -135,7 +124,7 @@ export default function Configuracion() {
       </Head>
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{background:${C.bg};color:${C.text};font-family:${C.font};min-height:100vh;}
+        body{background:${C.pageBg};color:${C.text};font-family:${C.font};min-height:100vh;}
         input,button{font-family:${C.font};}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -147,8 +136,14 @@ export default function Configuracion() {
         <div style={{ marginLeft: 240, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0 }}>
 
           {/* Topbar */}
-          <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 24px', position: 'sticky', top: 0, zIndex: 30 }}>
+          <div style={{ height: 56, background: C.white, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', position: 'sticky', top: 0, zIndex: 30 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: C.navy }}>Configuración</span>
+            <button onClick={toggleTheme} title={isDark ? 'Modo claro' : 'Modo oscuro'} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }}>
+              {isDark
+                ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.6 2.6l1 1M10.4 10.4l1 1M11.4 2.6l-1 1M3.6 10.4l-1 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 9A6 6 0 0 1 5 2a6 6 0 1 0 7 7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              }
+            </button>
           </div>
 
           {/* ── BODY ── */}

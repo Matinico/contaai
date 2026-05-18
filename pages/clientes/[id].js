@@ -6,21 +6,7 @@ import { useRole } from '../../lib/use-role';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Sidebar from '../../components/Sidebar';
-
-const C = {
-  bg:     '#f0f2f5',
-  navy:   '#1a3a5c',
-  accent: '#7eb8f7',
-  white:  '#ffffff',
-  text:   '#1e293b',
-  muted:  '#64748b',
-  border: '#dde1e7',
-  green:  '#16a34a',
-  red:    '#dc2626',
-  yellow: '#d97706',
-  font:   "system-ui,-apple-system,'Segoe UI',sans-serif",
-  mono:   "'Courier New',Courier,monospace",
-};
+import { useTheme } from '../../lib/theme';
 
 const CATEGORIES = {
   servicios:     { label: 'Servicios',      alicuota: 21   },
@@ -35,10 +21,6 @@ const CATEGORIES = {
 
 const PERIODS = ['05/2026','04/2026','03/2026','02/2026','01/2026','12/2025','11/2025','10/2025'];
 
-const inp    = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 10px', color: C.text, fontFamily: C.mono, fontSize: 13, outline: 'none', boxSizing: 'border-box' };
-const lbl    = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const advLbl = { fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 };
-const advInp = w => ({ background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 6, padding: '6px 8px', color: C.text, fontSize: 12, outline: 'none', fontFamily: C.font, width: w });
 
 function fmt(n) { return (n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatCuit(v) { const d = String(v||'').replace(/\D/g,'').slice(0,11); if(d.length<=2)return d; if(d.length<=10)return`${d.slice(0,2)}-${d.slice(2)}`; return`${d.slice(0,2)}-${d.slice(2,10)}-${d.slice(10)}`; }
@@ -321,6 +303,11 @@ function dbToEntry(row) {
 }
 
 export default function ClienteDetalle() {
+  const { C, isDark, toggleTheme } = useTheme();
+  const inp    = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '8px 10px', color: C.text, fontFamily: C.mono, fontSize: 13, outline: 'none', boxSizing: 'border-box' };
+  const lbl    = { display: 'block', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' };
+  const advLbl = { fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 };
+  const advInp = w => ({ background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 6, padding: '6px 8px', color: C.text, fontSize: 12, outline: 'none', fontFamily: C.font, width: w });
   const { user, signOut } = useAuth();
   const { rol } = useRole({ redirectIfNoMembership: false });
   const router = useRouter();
@@ -640,7 +627,7 @@ export default function ClienteDetalle() {
   const previewUrl    = modal?.file?.type?.startsWith('image/') ? URL.createObjectURL(modal.file) : null;
 
   if (user === undefined || user === null) {
-    return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
+    return <div style={{ background: C.pageBg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.font, color: C.muted, fontSize: 14 }}>Cargando…</div>;
   }
 
   return (
@@ -650,12 +637,12 @@ export default function ClienteDetalle() {
       </Head>
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{background:${C.bg};color:${C.text};font-family:${C.font};min-height:100vh;}
-        ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+        body{background:${C.pageBg};color:${C.text};font-family:${C.font};min-height:100vh;}
+        ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}
         input,select,button{font-family:${C.font};}
         input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-        .tr-hover:hover td{background:#f5f7fa;}
-        .menu-item:hover{background:#f5f7fa;}
+        .tr-hover:hover td{background:${C.bg};}
+        .menu-item:hover{background:${C.bg};}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulseDot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.4);}50%{opacity:.8;box-shadow:0 0 0 5px rgba(16,185,129,0);}}
@@ -671,7 +658,7 @@ export default function ClienteDetalle() {
 
         <div style={{ marginLeft: 240, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0 }}>
           {/* ── Topbar ── */}
-          <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', position: 'sticky', top: 0, zIndex: 30 }}>
+          <div style={{ height: 56, background: C.white, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', position: 'sticky', top: 0, zIndex: 30 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulseDot 2s infinite' }} />
               <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b' }}>Consola activa</span>
@@ -681,11 +668,14 @@ export default function ClienteDetalle() {
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
                 ARCA Conectado
               </div>
-              <button style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', lineHeight: 1, color: '#64748b', display: 'flex', alignItems: 'center' }}>
+              <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', lineHeight: 1, color: C.muted, display: 'flex', alignItems: 'center' }}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 0 0 3.5 6c0 2.5-.8 3.5-1.5 4.5h12c-.7-1-1.5-2-1.5-4.5A4.5 4.5 0 0 0 8 1.5zM6.5 13a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
               </button>
-              <button style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', lineHeight: 1, color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 10A6 6 0 0 1 6 2.5a6 6 0 1 0 7.5 7.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <button onClick={toggleTheme} title={isDark ? 'Modo claro' : 'Modo oscuro'} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', lineHeight: 1, color: C.muted, display: 'flex', alignItems: 'center' }}>
+                {isDark
+                  ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.9 2.9l1.1 1.1M12 12l1.1 1.1M13.1 2.9l-1.1 1.1M4 12l-1.1 1.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  : <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 10A6 6 0 0 1 6 2.5a6 6 0 1 0 7.5 7.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                }
               </button>
             </div>
           </div>

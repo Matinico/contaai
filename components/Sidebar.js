@@ -1,18 +1,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState, useRef, useEffect } from 'react';
-
-const C = {
-  navy:   '#1a3a5c',
-  blue:   '#2563eb',
-  border: '#e2e8f0',
-  text:   '#1e293b',
-  muted:  '#64748b',
-  bg:     '#f8fafc',
-  orange: '#f97316',
-};
-
 import { FONT, SYNE } from '../lib/fonts';
+import { useTheme } from '../lib/theme';
 
 const IcoHome    = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 6.5L7 2l5.5 4.5V13H9V9H5v4H1.5V6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>;
 const IcoPeople  = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="5" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M1 12.5c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="10" cy="4.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M13 12.5c0-1.8-1.1-3.2-2.5-3.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
@@ -54,6 +44,7 @@ export default function Sidebar({ clientCount, user, rol, onSignOut }) {
   const router       = useRouter();
   const menuRef      = useRef(null);
   const [showMenu, setShowMenu] = useState(false);
+  const { C } = useTheme();
 
   useEffect(() => {
     const h = e => {

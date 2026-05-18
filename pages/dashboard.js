@@ -7,24 +7,8 @@ import { authFetch } from '../lib/auth-fetch';
 import { useRole } from '../lib/use-role';
 import Sidebar from '../components/Sidebar';
 import { proximosVencimientos, vencimientoIVA } from '../lib/vencimientos';
-
-const C = {
-  navy:   '#1a3a5c',
-  blue:   '#2563eb',
-  green:  '#10b981',
-  orange: '#f97316',
-  red:    '#dc2626',
-  white:  '#ffffff',
-  bg:     '#f8fafc',
-  text:   '#1e293b',
-  muted:  '#64748b',
-  border: '#e2e8f0',
-};
-
 import { FONT, SYNE } from '../lib/fonts';
-
-const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
-const inp = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 13, outline: 'none', fontFamily: FONT };
+import { useTheme } from '../lib/theme';
 
 function formatCuit(v) {
   const d = String(v || '').replace(/\D/g, '').slice(0, 11);
@@ -60,6 +44,7 @@ function fmtDate(d) {
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, sub, accent }) {
+  const { C } = useTheme();
   return (
     <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 22px', borderTop: `3px solid ${accent}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <div style={{ marginBottom: 12 }}>
@@ -73,6 +58,7 @@ function KpiCard({ label, value, sub, accent }) {
 
 // ── Topbar ────────────────────────────────────────────────────────────────────
 function Topbar() {
+  const { C, isDark, toggleTheme } = useTheme();
   return (
     <div style={{
       height: 56, background: C.white, borderBottom: `1px solid ${C.border}`,
@@ -91,8 +77,11 @@ function Topbar() {
         <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }} title="Notificaciones">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a3.5 3.5 0 0 0-3.5 3.5v3L2 9.5v.5h10v-.5L10.5 8V5A3.5 3.5 0 0 0 7 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5.5 10.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3"/></svg>
         </button>
-        <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }} title="Modo oscuro (próximamente)">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 9A6 6 0 0 1 5 2a6 6 0 1 0 7 7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        <button onClick={toggleTheme} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }} title={isDark ? 'Modo claro' : 'Modo oscuro'}>
+          {isDark
+            ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.6 2.6l1 1M10.4 10.4l1 1M11.4 2.6l-1 1M3.6 10.4l-1 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 9A6 6 0 0 1 5 2a6 6 0 1 0 7 7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+          }
         </button>
       </div>
     </div>
@@ -104,6 +93,9 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { rol } = useRole({ redirectIfNoMembership: false });
+  const { C } = useTheme();
+  const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
+  const inp = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 13, outline: 'none', fontFamily: FONT };
 
   const [clientes,        setClientes]        = useState([]);
   const [loading,         setLoading]         = useState(true);
@@ -196,7 +188,7 @@ export default function Dashboard() {
 
   if (user === undefined || user === null || !onboardingReady) {
     return (
-      <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.muted, fontSize: 14 }}>
+      <div style={{ background: C.pageBg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.muted, fontSize: 14 }}>
         Cargando…
       </div>
     );
@@ -248,7 +240,7 @@ export default function Dashboard() {
 
       <style>{`
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: ${C.bg}; color: ${C.text}; font-family: ${FONT}; min-height: 100vh; }
+        body { background: ${C.pageBg}; color: ${C.text}; font-family: ${FONT}; min-height: 100vh; }
         input, select, textarea, button { font-family: ${FONT}; }
         @keyframes fadeIn  { from { opacity:0; transform:translateY(4px) }  to { opacity:1; transform:translateY(0) } }
         @keyframes slideUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
@@ -256,10 +248,10 @@ export default function Dashboard() {
           0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(16,185,129,.4); }
           50%      { opacity:.8; box-shadow:0 0 0 5px rgba(16,185,129,0); }
         }
-        .row-hover:hover { background: #f1f5f9 !important; cursor: pointer; }
+        .row-hover:hover { background: ${C.bg} !important; cursor: pointer; }
         .btn-filter { transition: background .12s, color .12s; }
         .btn-filter.active { background: ${C.navy} !important; color: #fff !important; }
-        .btn-filter:not(.active):hover { background: #f1f5f9 !important; }
+        .btn-filter:not(.active):hover { background: ${C.bg} !important; }
       `}</style>
 
       {/* ── Layout shell ── */}
