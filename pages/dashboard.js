@@ -285,11 +285,9 @@ export default function Dashboard() {
             </div>
 
             {/* ── KPI Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }} className="kpi-grid">
-              <KpiCard label="Clientes activos"         value={loading ? '…' : activos}    sub="en el estudio"           accent={C.navy}   icon="👥" />
-              <KpiCard label="Facturas procesadas"      value="—"                           sub="este período"             accent={C.blue}   icon="📄" />
-              <KpiCard label="Crédito fiscal (cartera)" value="—"                           sub="IVA compras consolidado"  accent={C.green}  icon="💰" />
-              <KpiCard label="Vencimientos próximos"    value={loading ? '…' : vencen7dias}  sub="vencen en 7 días"         accent={C.orange} icon="⏰" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 28 }} className="kpi-grid">
+              <KpiCard label="Clientes activos"      value={loading ? '…' : activos}     sub="en el estudio"    accent={C.navy}   icon="👥" />
+              <KpiCard label="Vencimientos próximos" value={loading ? '…' : vencen7dias} sub="vencen en 7 días" accent={C.orange} icon="⏰" />
             </div>
 
             {/* ── Main grid ── */}
