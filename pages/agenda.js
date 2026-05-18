@@ -6,8 +6,21 @@ import { authFetch } from '../lib/auth-fetch';
 import { useRole } from '../lib/use-role';
 import Sidebar from '../components/Sidebar';
 import { todosLosVencimientos, mesPagoLabel } from '../lib/vencimientos';
-import { FONT } from '../lib/fonts';
-import { useTheme } from '../lib/theme';
+
+const C = {
+  navy:   '#1a3a5c',
+  blue:   '#2563eb',
+  green:  '#10b981',
+  orange: '#f97316',
+  red:    '#dc2626',
+  white:  '#ffffff',
+  bg:     '#f8fafc',
+  text:   '#1e293b',
+  muted:  '#64748b',
+  border: '#e2e8f0',
+};
+
+import { FONT, SYNE } from '../lib/fonts';
 
 function urgenciaConfig(diasRestantes) {
   if (diasRestantes < 3)  return { color: C.red,    bg: '#fef2f2',  label: diasRestantes <= 0 ? 'Vencido' : `${diasRestantes}d` };
@@ -22,7 +35,6 @@ function formatCuitDisplay(cuit) {
 }
 
 function Topbar() {
-  const { C, isDark, toggleTheme } = useTheme();
   return (
     <div style={{
       height: 56, background: C.white, borderBottom: `1px solid ${C.border}`,
@@ -33,12 +45,6 @@ function Topbar() {
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
         <span style={{ fontSize: 13, fontWeight: 500, color: C.muted }}>Consola activa</span>
       </div>
-      <button onClick={toggleTheme} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }} title={isDark ? 'Modo claro' : 'Modo oscuro'}>
-        {isDark
-          ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.3"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.6 2.6l1 1M10.4 10.4l1 1M11.4 2.6l-1 1M3.6 10.4l-1 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-          : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 9A6 6 0 0 1 5 2a6 6 0 1 0 7 7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-        }
-      </button>
     </div>
   );
 }
@@ -47,7 +53,6 @@ export default function Agenda() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const { rol } = useRole({ redirectIfNoMembership: false });
-  const { C } = useTheme();
 
   const [clientes, setClientes] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -72,7 +77,7 @@ export default function Agenda() {
 
   if (user === undefined || user === null) {
     return (
-      <div style={{ background: C.pageBg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.muted, fontSize: 14 }}>
+      <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.muted, fontSize: 14 }}>
         Cargando…
       </div>
     );
@@ -107,12 +112,12 @@ export default function Agenda() {
 
       <style>{`
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: ${C.pageBg}; color: ${C.text}; font-family: ${FONT}; }
+        body { background: ${C.bg}; color: ${C.text}; font-family: ${FONT}; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:translateY(0) } }
         .mes-tab { transition: background .12s, color .12s; }
-        .mes-tab:hover { background: ${C.bg} !important; }
+        .mes-tab:hover { background: #f1f5f9 !important; }
         .mes-tab.activo { background: ${C.navy} !important; color: #fff !important; }
-        .agenda-row:hover { background: ${C.bg} !important; }
+        .agenda-row:hover { background: #f8fafc !important; }
       `}</style>
 
       <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -131,7 +136,7 @@ export default function Agenda() {
 
             {/* Encabezado */}
             <div style={{ marginBottom: 24 }}>
-              <h1 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: C.navy, marginBottom: 4 }}>
+              <h1 style={{ fontFamily: SYNE, fontSize: 24, fontWeight: 800, color: C.navy, marginBottom: 4 }}>
                 Agenda de vencimientos
               </h1>
               <p style={{ fontSize: 13, color: C.muted }}>
@@ -148,7 +153,7 @@ export default function Agenda() {
                 { label: 'Total períodos',  value: todos.length,   color: C.navy,    bg: '#eff6ff'  },
               ].map(chip => (
                 <div key={chip.label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: chip.bg, border: `1px solid ${chip.color}22`, borderRadius: 8, padding: '8px 14px' }}>
-                  <span style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: chip.color }}>{loading ? '—' : chip.value}</span>
+                  <span style={{ fontFamily: SYNE, fontSize: 20, fontWeight: 800, color: chip.color }}>{loading ? '—' : chip.value}</span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: chip.color }}>{chip.label}</span>
                 </div>
               ))}
@@ -218,8 +223,8 @@ export default function Agenda() {
                 {(mesActivo !== null ? [[mesActivo, porMes[mesActivo]]] : mesesConDatos).map(([mes, vencimientos]) => (
                   <div key={mes} style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                     {/* Cabecera del mes */}
-                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: C.bg }}>
-                      <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.navy }}>
+                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: '#f8fafc' }}>
+                      <span style={{ fontFamily: SYNE, fontSize: 14, fontWeight: 700, color: C.navy }}>
                         {mesPagoLabel(Number(mes))}
                       </span>
                       <span style={{ fontSize: 11, color: C.muted }}>
@@ -235,7 +240,7 @@ export default function Agenda() {
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
-                          <tr style={{ background: C.bg }}>
+                          <tr style={{ background: '#f8fafc' }}>
                             {['Cliente', 'Empresa', 'CUIT', 'Fecha vencimiento', 'Días restantes'].map(h => (
                               <th key={h} style={{ padding: '9px 16px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>
                                 {h}
