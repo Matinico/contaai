@@ -213,7 +213,6 @@ export default function Agenda() {
               <div style={{ padding: '60px 0', textAlign: 'center', color: C.muted, fontSize: 14 }}>Cargando…</div>
             ) : filtrados.length === 0 ? (
               <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>Sin vencimientos</div>
                 <div style={{ fontSize: 12, color: C.muted }}>
                   {clientes.length === 0 ? 'No hay clientes con empresas registradas.' : 'No se encontraron resultados para esa búsqueda.'}

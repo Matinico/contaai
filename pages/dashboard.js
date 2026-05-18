@@ -59,12 +59,11 @@ function fmtDate(d) {
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, accent, icon }) {
+function KpiCard({ label, value, sub, accent }) {
   return (
     <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 22px', borderTop: `3px solid ${accent}`, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div style={{ marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, fontFamily: FONT }}>{label}</span>
-        <span style={{ fontSize: 20 }}>{icon}</span>
       </div>
       <div style={{ fontFamily: SYNE, fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: FONT, fontSize: 11, color: C.muted, marginTop: 6 }}>{sub}</div>}
@@ -89,11 +88,11 @@ function Topbar() {
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
           ARCA Conectado
         </div>
-        <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', fontSize: 15, lineHeight: 1, color: C.muted, display: 'flex', alignItems: 'center' }} title="Notificaciones">
-          🔔
+        <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }} title="Notificaciones">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5a3.5 3.5 0 0 0-3.5 3.5v3L2 9.5v.5h10v-.5L10.5 8V5A3.5 3.5 0 0 0 7 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5.5 10.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3"/></svg>
         </button>
-        <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', fontSize: 15, lineHeight: 1, color: C.muted, display: 'flex', alignItems: 'center' }} title="Modo oscuro (próximamente)">
-          🌙
+        <button style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, padding: '6px 8px', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center' }} title="Modo oscuro (próximamente)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 9A6 6 0 0 1 5 2a6 6 0 1 0 7 7z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         </button>
       </div>
     </div>
@@ -294,9 +293,9 @@ export default function Dashboard() {
 
             {/* ── KPI Cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="kpi-grid">
-              <KpiCard label="Clientes activos"      value={loading ? '…' : activos}           sub="en el estudio"                accent={C.navy}   icon="👥" />
-              <KpiCard label="Vencimientos próximos" value={loading ? '…' : vencen7dias}       sub="vencen en 7 días"             accent={C.orange} icon="⏰" />
-              <KpiCard label="IVA vencido este mes"  value={loading ? '…' : ivaVencidoEsteMes} sub="vencimiento ya pasó este mes" accent={C.red}    icon="⚠️" />
+              <KpiCard label="Clientes activos"      value={loading ? '…' : activos}           sub="en el estudio"                accent={C.navy}   />
+              <KpiCard label="Vencimientos próximos" value={loading ? '…' : vencen7dias}       sub="vencen en 7 días"             accent={C.orange} />
+              <KpiCard label="IVA vencido este mes"  value={loading ? '…' : ivaVencidoEsteMes} sub="vencimiento ya pasó este mes" accent={C.red}    />
             </div>
 
             {/* ── Main grid ── */}
@@ -350,7 +349,6 @@ export default function Dashboard() {
                   <div style={{ padding: '48px 20px', textAlign: 'center', color: C.muted, fontSize: 13 }}>Cargando…</div>
                 ) : clientesFiltrados.length === 0 ? (
                   <div style={{ padding: '56px 20px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 32, marginBottom: 12 }}>👥</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>
                       {search || filter !== 'todos' ? 'Sin resultados' : 'No hay clientes aún'}
                     </div>
@@ -420,7 +418,6 @@ export default function Dashboard() {
                 <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 15 }}>⏰</span>
                       <h3 style={{ fontFamily: SYNE, fontSize: 13, fontWeight: 700, color: C.text }}>Próximos vencimientos</h3>
                     </div>
                     <Link href="/agenda" style={{ fontSize: 11, fontWeight: 600, color: C.blue, textDecoration: 'none' }}>Ver agenda →</Link>
@@ -452,7 +449,6 @@ export default function Dashboard() {
                 {/* Posición IVA consolidada */}
                 <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 15 }}>📊</span>
                     <h3 style={{ fontFamily: SYNE, fontSize: 13, fontWeight: 700, color: C.text }}>Posición IVA (cartera)</h3>
                   </div>
                   <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>

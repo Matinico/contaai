@@ -484,13 +484,13 @@ export default function ClienteDetalle() {
         const res = await authFetch(endpoint, { method: 'POST', body: JSON.stringify({ imageBase64: base64, mediaType }) });
         const json = await res.json();
         const aiData = res.ok ? json.data : null;
-        if (!res.ok) showToast('⚠️', json.error || 'Error de API', true);
+        if (!res.ok) showToast('', json.error || 'Error de API', true);
         if (aiData?.cae) {
           try {
             const caeChk = await authFetch(`/api/facturas?cae=${encodeURIComponent(aiData.cae)}&cliente_id=${id}`);
             const caeJ = await caeChk.json();
             if (caeJ.data?.length > 0) {
-              showToast('ℹ️', `Factura ya cargada (CAE ${aiData.cae}) — se omite`, false);
+              showToast('', `Factura ya cargada (CAE ${aiData.cae}) — se omite`, false);
               setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'done' } : x));
               continue;
             }
@@ -524,15 +524,15 @@ export default function ClienteDetalle() {
             saved = true;
           } catch (err) {
             console.error('[processQueue] Error guardando factura:', err);
-            showToast('⚠️', 'Error al guardar: ' + err.message, true);
+            showToast('', 'Error al guardar: ' + err.message, true);
           }
           setQ(q => q.map(x => x.file === item.file ? { ...x, status: saved ? 'done' : 'error' } : x));
         } else {
           setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'done' } : x));
         }
-      } catch (err) { console.error(err); showToast('⚠️', 'Error procesando archivo', true); setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'error' } : x)); }
+      } catch (err) { console.error(err); showToast('', 'Error procesando archivo', true); setQ(q => q.map(x => x.file === item.file ? { ...x, status: 'error' } : x)); }
     }
-    setProc(false); showToast('✅', 'Procesamiento completado');
+    setProc(false); showToast('', 'Procesamiento completado');
   };
 
   const updateForm = (key, val) => {
@@ -681,8 +681,12 @@ export default function ClienteDetalle() {
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
                 ARCA Conectado
               </div>
-              <button style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', fontSize: 15, lineHeight: 1, color: '#64748b', display: 'flex', alignItems: 'center' }}>🔔</button>
-              <button style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', fontSize: 15, lineHeight: 1, color: '#64748b', display: 'flex', alignItems: 'center' }}>🌙</button>
+              <button style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', lineHeight: 1, color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.5A4.5 4.5 0 0 0 3.5 6c0 2.5-.8 3.5-1.5 4.5h12c-.7-1-1.5-2-1.5-4.5A4.5 4.5 0 0 0 8 1.5zM6.5 13a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              </button>
+              <button style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 8px', cursor: 'pointer', lineHeight: 1, color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 10A6 6 0 0 1 6 2.5a6 6 0 1 0 7.5 7.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
             </div>
           </div>
 
@@ -840,7 +844,7 @@ export default function ClienteDetalle() {
                           return (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#fafbfc', border: `1px solid ${C.border}`, borderRadius: 7, fontSize: 12 }}>
                               <div style={{ width: 28, height: 28, borderRadius: 4, background: C.border, flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
-                                {item.file.type?.startsWith('image/') ? <img src={URL.createObjectURL(item.file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📄'}
+                                {item.file.type?.startsWith('image/') ? <img src={URL.createObjectURL(item.file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="#94a3b8" strokeWidth="1.3"/><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" stroke="#94a3b8" strokeWidth="1.3" strokeLinecap="round"/></svg>}
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: C.text }}>{item.file.name}</div>
@@ -997,7 +1001,6 @@ export default function ClienteDetalle() {
                             <tr><td colSpan={14} style={{ padding: '40px', textAlign: 'center', color: C.muted, fontSize: 13 }}>Cargando…</td></tr>
                           ) : filtered.length === 0 ? (
                             <tr><td colSpan={14} style={{ padding: '48px', textAlign: 'center', color: C.muted }}>
-                              <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
                               <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>{entries.length > 0 ? 'Sin resultados' : 'Listo para procesar'}</div>
                               <div style={{ fontSize: 12 }}>{entries.length > 0 ? 'Cambiá los filtros' : 'Cargá facturas y presioná Procesar con IA'}</div>
                             </td></tr>
@@ -1184,7 +1187,7 @@ export default function ClienteDetalle() {
               <label style={lbl}>CUIT</label>
               {entityModal.cuit
                 ? <div style={{ ...inp, background: '#f8fafc', color: C.muted }}>{entityModal.cuit}</div>
-                : <div style={{ padding: '10px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: C.red, fontSize: 12, fontWeight: 600 }}>⚠️ No se detectó CUIT</div>
+                : <div style={{ padding: '10px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: C.red, fontSize: 12, fontWeight: 600 }}>No se detectó CUIT</div>
               }
             </div>
             {entityModal.cuit && (

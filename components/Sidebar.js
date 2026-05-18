@@ -14,29 +14,38 @@ const C = {
 
 import { FONT, SYNE } from '../lib/fonts';
 
+const IcoHome    = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 6.5L7 2l5.5 4.5V13H9V9H5v4H1.5V6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>;
+const IcoPeople  = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="5" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M1 12.5c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="10" cy="4.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M13 12.5c0-1.8-1.1-3.2-2.5-3.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+const IcoDoc     = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+const IcoCal     = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M1.5 6.5h11M4.5 1v3M9.5 1v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+const IcoBrief   = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="5" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 5V3.5a2 2 0 0 1 4 0V5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M1 9h12" stroke="currentColor" strokeWidth="1.3"/></svg>;
+const IcoChart   = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="7.5" width="2.5" height="4.5" rx="0.5" stroke="currentColor" strokeWidth="1.3"/><rect x="5.5" y="4.5" width="2.5" height="7.5" rx="0.5" stroke="currentColor" strokeWidth="1.3"/><rect x="9.5" y="2" width="2.5" height="10" rx="0.5" stroke="currentColor" strokeWidth="1.3"/></svg>;
+const IcoGear    = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M7 1.5V3M7 11v1.5M1.5 7H3M11 7h1.5M3 3l1 1M10 10l1 1M11 3l-1 1M4 10l-1 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+const IcoUser    = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.3"/><path d="M1.5 13c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+
 // activeOn: array of path prefixes that make this item highlighted
 const NAV_GROUPS = [
   {
     section: 'Principal',
     items: [
-      { href: '/dashboard', icon: '🏠', label: 'Dashboard',       activeOn: ['/dashboard'] },
-      { href: '/dashboard', icon: '👥', label: 'Clientes',        activeOn: ['/clientes'], badgeKey: 'clientCount' },
+      { href: '/dashboard', icon: IcoHome,   label: 'Dashboard',       activeOn: ['/dashboard'] },
+      { href: '/dashboard', icon: IcoPeople, label: 'Clientes',        activeOn: ['/clientes'], badgeKey: 'clientCount' },
     ],
   },
   {
     section: 'Módulos',
     items: [
-      { href: null,      icon: '📋', label: 'Liquidación IVA', activeOn: ['/clientes'] },
-      { href: '/agenda', icon: '📅', label: 'Agenda',          activeOn: ['/agenda'] },
-      { href: null,      icon: '💼', label: 'Sueldos',         soon: true },
-      { href: null,      icon: '📊', label: 'Ing. Brutos',     soon: true },
+      { href: null,      icon: IcoDoc,   label: 'Liquidación IVA', activeOn: ['/clientes'] },
+      { href: '/agenda', icon: IcoCal,   label: 'Agenda',          activeOn: ['/agenda'] },
+      { href: null,      icon: IcoBrief, label: 'Sueldos',         soon: true },
+      { href: null,      icon: IcoChart, label: 'Ing. Brutos',     soon: true },
     ],
   },
   {
     section: 'Estudio',
     items: [
-      { href: '/configuracion', icon: '⚙️', label: 'Configuración', activeOn: ['/configuracion'] },
-      { href: null,             icon: '👤', label: 'Usuarios' },
+      { href: '/configuracion', icon: IcoGear, label: 'Configuración', activeOn: ['/configuracion'] },
+      { href: null,             icon: IcoUser, label: 'Usuarios' },
     ],
   },
 ];
