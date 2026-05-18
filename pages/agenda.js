@@ -6,7 +6,7 @@ import { authFetch } from '../lib/auth-fetch';
 import { useRole } from '../lib/use-role';
 import Sidebar from '../components/Sidebar';
 import { todosLosVencimientos, mesPagoLabel } from '../lib/vencimientos';
-import { FONT, SYNE } from '../lib/fonts';
+import { FONT } from '../lib/fonts';
 import { useTheme } from '../lib/theme';
 
 function urgenciaConfig(diasRestantes) {
@@ -131,7 +131,7 @@ export default function Agenda() {
 
             {/* Encabezado */}
             <div style={{ marginBottom: 24 }}>
-              <h1 style={{ fontFamily: SYNE, fontSize: 24, fontWeight: 800, color: C.navy, marginBottom: 4 }}>
+              <h1 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: C.navy, marginBottom: 4 }}>
                 Agenda de vencimientos
               </h1>
               <p style={{ fontSize: 13, color: C.muted }}>
@@ -148,7 +148,7 @@ export default function Agenda() {
                 { label: 'Total períodos',  value: todos.length,   color: C.navy,    bg: '#eff6ff'  },
               ].map(chip => (
                 <div key={chip.label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: chip.bg, border: `1px solid ${chip.color}22`, borderRadius: 8, padding: '8px 14px' }}>
-                  <span style={{ fontFamily: SYNE, fontSize: 20, fontWeight: 800, color: chip.color }}>{loading ? '—' : chip.value}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: chip.color }}>{loading ? '—' : chip.value}</span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: chip.color }}>{chip.label}</span>
                 </div>
               ))}
@@ -219,7 +219,7 @@ export default function Agenda() {
                   <div key={mes} style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                     {/* Cabecera del mes */}
                     <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: C.bg }}>
-                      <span style={{ fontFamily: SYNE, fontSize: 14, fontWeight: 700, color: C.navy }}>
+                      <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.navy }}>
                         {mesPagoLabel(Number(mes))}
                       </span>
                       <span style={{ fontSize: 11, color: C.muted }}>

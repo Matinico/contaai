@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState, useRef, useEffect } from 'react';
-import { FONT, SYNE } from '../lib/fonts';
+import { FONT } from '../lib/fonts';
 import { useTheme } from '../lib/theme';
 
 const IcoHome    = <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 6.5L7 2l5.5 4.5V13H9V9H5v4H1.5V6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>;
@@ -90,7 +90,7 @@ export default function Sidebar({ clientCount, user, rol, onSignOut }) {
               <circle cx="39" cy="40" r="12" fill="#7eb8f7"/>
               <path d="M33 40l4.5 4.5L46 34" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span style={{ fontFamily: SYNE, fontWeight: 800, fontSize: 21, color: C.navy, letterSpacing: '2px' }}>CIA</span>
+            <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 21, color: C.navy, letterSpacing: '2px' }}>CIA</span>
           </Link>
         </div>
 

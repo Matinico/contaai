@@ -21,7 +21,7 @@ const C = {
   border: '#e2e8f0',
 };
 
-import { FONT, SYNE } from '../lib/fonts';
+import { FONT } from '../lib/fonts';
 
 const lbl = { display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' };
 const inp = { width: '100%', background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 7, padding: '9px 12px', color: C.text, fontSize: 13, outline: 'none', fontFamily: FONT };
@@ -65,7 +65,7 @@ function KpiCard({ label, value, sub, accent }) {
       <div style={{ marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, fontFamily: FONT }}>{label}</span>
       </div>
-      <div style={{ fontFamily: SYNE, fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: FONT, fontSize: 11, color: C.muted, marginTop: 6 }}>{sub}</div>}
     </div>
   );
@@ -283,7 +283,7 @@ export default function Dashboard() {
 
             {/* Greeting */}
             <div style={{ marginBottom: 28 }}>
-              <h1 style={{ fontFamily: SYNE, fontSize: 24, fontWeight: 800, color: C.navy, marginBottom: 4 }}>
+              <h1 style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: C.navy, marginBottom: 4 }}>
                 {greeting(name)}
               </h1>
               <p style={{ fontSize: 13, color: C.muted }}>
@@ -306,7 +306,7 @@ export default function Dashboard() {
 
                 {/* Table header */}
                 <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <h2 style={{ fontFamily: SYNE, fontSize: 15, fontWeight: 700, color: C.text }}>Clientes del estudio</h2>
+                  <h2 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: C.text }}>Clientes del estudio</h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     {/* Search */}
                     <div style={{ position: 'relative' }}>
@@ -418,7 +418,7 @@ export default function Dashboard() {
                 <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <h3 style={{ fontFamily: SYNE, fontSize: 13, fontWeight: 700, color: C.text }}>Próximos vencimientos</h3>
+                      <h3 style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: C.text }}>Próximos vencimientos</h3>
                     </div>
                     <Link href="/agenda" style={{ fontSize: 11, fontWeight: 600, color: C.blue, textDecoration: 'none' }}>Ver agenda →</Link>
                   </div>
@@ -449,7 +449,7 @@ export default function Dashboard() {
                 {/* Posición IVA consolidada */}
                 <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h3 style={{ fontFamily: SYNE, fontSize: 13, fontWeight: 700, color: C.text }}>Posición IVA (cartera)</h3>
+                    <h3 style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: C.text }}>Posición IVA (cartera)</h3>
                   </div>
                   <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {[
@@ -464,7 +464,7 @@ export default function Dashboard() {
                     <div style={{ height: 1, background: C.border, margin: '2px 0' }} />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Saldo neto</span>
-                      <span style={{ fontFamily: SYNE, fontSize: 16, fontWeight: 800, color: C.green }}>—</span>
+                      <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: C.green }}>—</span>
                     </div>
                     <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginTop: 4 }}>
                       El consolidado de IVA estará disponible cuando se procesen facturas de los clientes.
@@ -486,7 +486,7 @@ export default function Dashboard() {
             style={{ background: C.white, borderRadius: 14, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', animation: 'slideUp 0.2s ease' }}>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: `1px solid ${C.border}` }}>
-              <h3 style={{ fontFamily: SYNE, fontSize: 15, fontWeight: 700, color: C.text }}>Nuevo cliente</h3>
+              <h3 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: C.text }}>Nuevo cliente</h3>
               <button onClick={() => setModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, padding: 4, borderRadius: 4, display: 'flex' }}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
               </button>
