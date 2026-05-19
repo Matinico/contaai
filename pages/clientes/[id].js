@@ -77,13 +77,15 @@ async function exportARCA(compras, ventas, period) {
   const JSZip = (await import('jszip')).default;
   const zip   = new JSZip();
 
-  const CBTE_COD = { A: '001', B: '006', C: '011', M: '051' };
-  const ALI_COD  = { '21': '0005', '10.5': '0004', '27': '0006', '0': '0003' };
-  const Z15      = '000000000000000';
+  const CBTE_COD   = { A: '001', B: '006', C: '011', M: '051' };
+  const CBTE_COD_2 = { A: '01',  B: '06',  C: '11',  M: '51'  };
+  const ALI_COD    = { '21': '0005', '10.5': '0004', '27': '0006', '0': '0003' };
+  const Z15        = '000000000000000';
 
-  const padLd = (v, n) => String(v ?? '').replace(/\D/g, '').padStart(n, '0').slice(-n);
-  const padR  = (v, n) => String(v ?? '').slice(0, n).padEnd(n, ' ');
-  const fmtAmt = n => String(Math.round(Math.abs(Number(n) || 0) * 100)).padStart(15, '0');
+  const padLd   = (v, n) => String(v ?? '').replace(/\D/g, '').padStart(n, '0').slice(-n);
+  const padR    = (v, n) => String(v ?? '').slice(0, n).padEnd(n, ' ');
+  const fmtAmt  = n => String(Math.round(Math.abs(Number(n) || 0) * 100)).padStart(15, '0');
+  const fmtAmt10 = n => String(Math.round(Math.abs(Number(n) || 0) * 100)).padStart(10, '0');
 
   function parseFecha(f) {
     if (!f) return '00000000';
@@ -91,12 +93,12 @@ async function exportARCA(compras, ventas, period) {
     return f.replace(/-/g, '');
   }
 
-  function parseNro(nro) {
+  function parseNro(nro, nLen = 20) {
     if (nro && nro.includes('-')) {
       const p = nro.split('-');
-      return { pto: padLd(p[0], 5), comp: padLd(p[1], 20) };
+      return { pto: padLd(p[0], 5), comp: padLd(p[1], nLen) };
     }
-    return { pto: '00000', comp: padLd(nro || '0', 20) };
+    return { pto: '00000', comp: padLd(nro || '0', nLen) };
   }
 
   function cantAli(e) {
@@ -164,6 +166,74 @@ async function exportARCA(compras, ventas, period) {
     return lines;
   }
 
+  // VENTAS CBTE: 266 chars (estructura diferente a compras)
+  function buildCbteVenta(e) {
+    const { pto, comp } = parseNro(e.nro, 9);
+    const tipoCod  = CBTE_COD_2[e.tipo] || '06';
+    const cuit     = padLd(e.cuit_cli || '', 11);
+    const denom    = padR(e.cliente || '', 30);
+    const isTipoAM = ['A', 'M'].includes(e.tipo);
+    const cfdf     = isTipoAM ? fmtAmt10(e.iva) : '0'.repeat(10);
+    return [
+      parseFecha(e.fecha), // pos 1-8: 8
+      tipoCod,             // pos 9-10: 2
+      pto,                 // pos 11-15: 5
+      comp,                // pos 16-24: 9 (desde)
+      comp,                // pos 25-33: 9 (hasta)
+      ' '.repeat(16),      // pos 34-49: 16
+      '8',                 // pos 50: 1
+      cuit,                // pos 51-61: 11
+      denom,               // pos 62-91: 30
+      fmtAmt(e.total),     // pos 92-106: 15
+      Z15,                 // pos 107-121: 15 No gravado
+      Z15,                 // pos 122-136: 15 Exento
+      Z15,                 // pos 137-151: 15 Percep IVA
+      Z15,                 // pos 152-166: 15 Percep otros nac
+      Z15,                 // pos 167-181: 15 Percep IIBB
+      Z15,                 // pos 182-196: 15 Percep municipal
+      Z15,                 // pos 197-211: 15 Imp internos
+      Z15,                 // pos 212-226: 15 Transacciones
+      Z15,                 // pos 227-241: 15
+      'PES',               // pos 242-244: 3
+      '0001000000',        // pos 245-254: 10
+      cantAli(e),          // pos 255: 1
+      ' ',                 // pos 256: 1
+      cfdf,                // pos 257-266: 10
+    ].join('');
+  }
+
+  // VENTAS ALICUOTAS: 62 chars (sin CUIT vendedor)
+  function buildAliLinesVenta(e) {
+    if (!['A', 'M'].includes(e.tipo)) return [];
+    const { pto, comp } = parseNro(e.nro, 14);
+    const cod = CBTE_COD[e.tipo] || '001';
+    const ALI_COD_V = { '21': '0004', '10.5': '0003', '27': '0005' };
+    const ALI_PCT_V = { '21': '002100', '10.5': '000500', '27': '002700' };
+    const lines = [];
+    const addLine = (neto, iva, pct) => {
+      if ((neto || 0) <= 0 && (iva || 0) <= 0) return;
+      const pctStr = String(pct);
+      lines.push([
+        cod,                                    // pos 1-3: 3
+        pto,                                    // pos 4-8: 5
+        comp,                                   // pos 9-22: 14
+        ALI_COD_V[pctStr] || '0004',            // pos 23-26: 4
+        fmtAmt(neto),                           // pos 27-41: 15
+        ALI_PCT_V[pctStr] || '002100',          // pos 42-47: 6
+        fmtAmt(iva),                            // pos 48-62: 15
+      ].join(''));
+    };
+    const hasBreakdown = (e.neto21 || 0) + (e.neto105 || 0) + (e.neto27 || 0) > 0;
+    if (hasBreakdown) {
+      addLine(e.neto21,  e.iva21,  '21');
+      addLine(e.neto105, e.iva105, '10.5');
+      addLine(e.neto27,  e.iva27,  '27');
+    } else {
+      addLine(e.neto, e.iva, String(e.alicuota || '21'));
+    }
+    return lines;
+  }
+
   function encodeWin1252(str) {
     const bytes = new Uint8Array(str.length);
     for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); bytes[i] = c < 256 ? c : 0x3F; }
@@ -174,8 +244,8 @@ async function exportARCA(compras, ventas, period) {
 
   zip.file(`LIBRO_IVA_DIGITAL_COMPRAS_ORDINARIAS_CBTE_${yyyymm}.txt`,      makeFile(compras.map(e => buildCbte(e, false))));
   zip.file(`LIBRO_IVA_DIGITAL_COMPRAS_ORDINARIAS_ALICUOTAS_${yyyymm}.txt`, makeFile(compras.flatMap(e => buildAliLines(e, false))));
-  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_CBTE_${yyyymm}.txt`,                  makeFile(ventas.map(e => buildCbte(e, true))));
-  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS_${yyyymm}.txt`,             makeFile(ventas.flatMap(e => buildAliLines(e, true))));
+  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_CBTE_${yyyymm}.txt`,                  makeFile(ventas.map(e => buildCbteVenta(e))));
+  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS_${yyyymm}.txt`,             makeFile(ventas.flatMap(e => buildAliLinesVenta(e))));
 
   const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
