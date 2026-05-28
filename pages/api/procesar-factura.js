@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { PDFDocument } from 'pdf-lib';
 import { verifyAuth } from '../../lib/verify-auth';
 
 export const config = {
@@ -67,8 +68,26 @@ export default async function handler(req, res) {
   const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const isPdf = mediaType === 'application/pdf';
   const safeMediaType = validImageTypes.includes(mediaType) ? mediaType : 'image/jpeg';
+
+  // PDFs de ARCA vienen triplicados: quedarse solo con la página 1
+  let pdfData = imageBase64;
+  if (isPdf) {
+    try {
+      const pdfDoc = await PDFDocument.load(Buffer.from(imageBase64, 'base64'));
+      if (pdfDoc.getPageCount() > 1) {
+        const singlePage = await PDFDocument.create();
+        const [firstPage] = await singlePage.copyPages(pdfDoc, [0]);
+        singlePage.addPage(firstPage);
+        pdfData = Buffer.from(await singlePage.save()).toString('base64');
+      }
+    } catch (pdfErr) {
+      console.warn('pdf-lib: no se pudo procesar el PDF, se envía completo:', pdfErr.message);
+      // Si falla el parse, se envía el PDF original sin modificar
+    }
+  }
+
   const fileBlock = isPdf
-    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: imageBase64 } }
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfData } }
     : { type: 'image',    source: { type: 'base64', media_type: safeMediaType,       data: imageBase64 } };
 
   try {
