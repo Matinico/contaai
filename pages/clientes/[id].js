@@ -648,6 +648,29 @@ export default function ClienteDetalle() {
   const confirmEntry = async () => {
     const isV = modal?.mode === 'ventas';
     const libro = modal?.mode;
+
+    // Validación de período: la fecha del comprobante debe coincidir con el período activo
+    if (form.fecha) {
+      let fMM, fYYYY;
+      if (form.fecha.includes('/')) {
+        const p = form.fecha.split('/');
+        if (p.length === 3 && p[2].length === 4) { fMM = p[1]; fYYYY = p[2]; }
+      } else if (form.fecha.includes('-')) {
+        const p = form.fecha.split('-');
+        if (p.length === 3 && p[0].length === 4) { fMM = p[1]; fYYYY = p[0]; }
+      }
+      if (fMM && fYYYY) {
+        const [pMM, pYYYY] = period.split('/');
+        if (fMM.padStart(2, '0') !== pMM.padStart(2, '0') || fYYYY !== pYYYY) {
+          const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+          const fMes = MESES[parseInt(fMM, 10) - 1] || fMM;
+          const pMes = MESES[parseInt(pMM, 10) - 1] || pMM;
+          showToast('⚠️', `La fecha del comprobante (${fMes} ${fYYYY}) no corresponde al período seleccionado (${pMes} ${pYYYY}).`, true);
+          return;
+        }
+      }
+    }
+
     const netoFinal = (parseFloat(form.neto21)||0)+(parseFloat(form.neto105)||0)+(parseFloat(form.neto27)||0)+(parseFloat(form.noGrav)||0)+(parseFloat(form.exento)||0) || parseFloat(form.neto)||0;
     const ivaFinal  = (parseFloat(form.iva21)||0)+(parseFloat(form.iva105)||0)+(parseFloat(form.iva27)||0) || parseFloat(form.iva)||0;
     const breakdown = { neto21: parseFloat(form.neto21)||0, iva21: parseFloat(form.iva21)||0, neto105: parseFloat(form.neto105)||0, iva105: parseFloat(form.iva105)||0, neto27: parseFloat(form.neto27)||0, iva27: parseFloat(form.iva27)||0, noGrav: parseFloat(form.noGrav)||0, exento: parseFloat(form.exento)||0 };
