@@ -244,8 +244,9 @@ async function exportARCA(compras, ventas, period) {
 
   zip.file(`LIBRO_IVA_DIGITAL_COMPRAS_ORDINARIAS_CBTE_${yyyymm}.txt`,      makeFile(compras.map(e => buildCbte(e, false))));
   zip.file(`LIBRO_IVA_DIGITAL_COMPRAS_ORDINARIAS_ALICUOTAS_${yyyymm}.txt`, makeFile(compras.flatMap(e => buildAliLines(e, false))));
-  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_CBTE_${yyyymm}.txt`,                  makeFile(ventas.map(e => buildCbteVenta(e))));
-  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS_${yyyymm}.txt`,             makeFile(ventas.flatMap(e => buildAliLinesVenta(e))));
+  const ventasValidas = ventas.filter(e => e && e.fecha && e.nro && e.tipo);
+  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_CBTE_${yyyymm}.txt`,                  makeFile(ventasValidas.map(e => buildCbteVenta(e))));
+  zip.file(`LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS_${yyyymm}.txt`,             makeFile(ventasValidas.flatMap(e => buildAliLinesVenta(e))));
 
   const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
