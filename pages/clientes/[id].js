@@ -1216,16 +1216,9 @@ export default function ClienteDetalle() {
                 <div>
                   <label style={lbl}>Alícuota principal</label>
                   <select value={form.alicuota ?? 21} onChange={e => updateForm('alicuota', e.target.value)} style={inp}>
-                    {isVentasModal ? (<>
-                      <option value={21}>Alícuota general (21%)</option>
-                      <option value={10.5}>Alícuota reducida (10,5%)</option>
-                      <option value={0}>Exento / Monotributo</option>
-                    </>) : (<>
-                      <option value={27}>Alícuota incrementada (27%)</option>
-                      <option value={21}>Alícuota general (21%)</option>
-                      <option value={10.5}>Alícuota reducida (10,5%)</option>
-                      <option value={0}>Exento / Monotributo</option>
-                    </>)}
+                    <option value={21}>21%</option>
+                    <option value={10.5}>10.5%</option>
+                    <option value={0}>Exento / Monotributo</option>
                   </select>
                 </div>
                 <div>
