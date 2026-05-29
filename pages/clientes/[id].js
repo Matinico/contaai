@@ -689,7 +689,24 @@ export default function ClienteDetalle() {
           setE(prev => prev.map(e => e.id === editingId ? dbToEntry({ ...json.data, libro }) : e));
           showToast('✓', 'Comprobante actualizado');
         } else {
-          const res = await authFetch('/api/facturas', { method: 'POST', body: JSON.stringify({ ...entryToDb(entry, libro, period, id), cuit_entidad: null }) });
+          // Verificar entidad antes de guardar (igual que el flujo IA)
+          const cuit = isV ? entry.cuit_cli : entry.cuit;
+          let cuit_entidad = cuit || null;
+          if (cuit) {
+            try {
+              const chkRes = await authFetch(`/api/entidades?cuit=${encodeURIComponent(cuit)}`);
+              const chkJ   = await chkRes.json();
+              if (!chkJ.data) {
+                // CUIT nuevo: preguntar si guardar entidad
+                const nombre = isV ? entry.cliente : entry.proveedor;
+                const tipo   = isV ? 'cliente' : 'proveedor';
+                const confirmed = await new Promise(resolve => { entityResolveRef.current = resolve; setEntityModal({ nombre, cuit, tipo }); setEntityForm({ nombre: nombre || '' }); });
+                if (confirmed) await authFetch('/api/entidades', { method: 'POST', body: JSON.stringify({ cuit, nombre: confirmed.nombre, tipo }) });
+              }
+              // CUIT existente: no preguntar nada
+            } catch (e) { console.error('Error verificando entidad:', e); }
+          }
+          const res = await authFetch('/api/facturas', { method: 'POST', body: JSON.stringify({ ...entryToDb(entry, libro, period, id), cuit_entidad }) });
           const json = await res.json();
           if (!res.ok) throw new Error(json.error);
           setE(prev => [...prev, dbToEntry(json.data)]);
