@@ -677,7 +677,7 @@ export default function ClienteDetalle() {
     const nroVentas = `${String(form.pto_venta||'').replace(/\D/g,'').padStart(5,'0')}-${String(form.nro_comp||'').replace(/\D/g,'').padStart(8,'0')}`;
     const entry = isV
       ? { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: nroVentas, cliente: form.cliente, cuit_cli: form.cuit_cli, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown }
-      : { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: form.cuit_rec, concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown };
+      : { id: editingId || Date.now(), fecha: form.fecha, tipo: form.tipo, nro: form.nro, proveedor: form.proveedor, cuit: form.cuit, cuit_rec: cliente?.empresas?.[0]?.cuit || '', concepto: form.concepto, categoria: form.categoria, alicuota: parseFloat(form.alicuota), neto: netoFinal, iva: ivaFinal, total: netoFinal + ivaFinal, cae: form.cae, ...breakdown };
     if (modal?.manual || modal?.edit) {
       const setE = libro === 'compras' ? setComprasEntries : setVentasEntries;
       setModal(null); setEditingId(null);
@@ -1194,8 +1194,7 @@ export default function ClienteDetalle() {
                     { label: 'CUIT Cliente',   key: 'cuit_cli', placeholder: '20-12345678-9', span: 2 },
                   ] : [
                     { label: 'Proveedor',      key: 'proveedor', placeholder: 'Razón social', span: 2 },
-                    { label: 'CUIT Proveedor', key: 'cuit',      placeholder: '20-12345678-9', span: 1 },
-                    { label: 'CUIT Receptor',  key: 'cuit_rec',  placeholder: '20-12345678-9', span: 1 },
+                    { label: 'CUIT Proveedor', key: 'cuit',      placeholder: '20-12345678-9', span: 2 },
                   ]),
                   { label: 'Concepto', key: 'concepto', placeholder: 'Descripción', span: 2 },
                 ].map(f => (
