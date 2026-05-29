@@ -954,7 +954,10 @@ export default function ClienteDetalle() {
 
                     <div style={{ marginTop: 14, padding: '10px 12px', background: '#fafbfc', border: `1px solid ${C.border}`, borderRadius: 8 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Alícuotas IVA</div>
-                      {[['Servicios públicos', '27%'], ['Servicios / Honorarios', '21%'], ['Insumos básicos', '10,5%'], ['Exento / Monotributo', '0%']].map(([l, v]) => (
+                      {(isCompras
+                        ? [['Alícuota incrementada', '27%'], ['Alícuota general', '21%'], ['Alícuota reducida', '10,5%'], ['Exento / Monotributo', '0%']]
+                        : [['Alícuota general', '21%'], ['Alícuota reducida', '10,5%'], ['Exento / Monotributo', '0%']]
+                      ).map(([l, v]) => (
                         <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
                           <span style={{ color: C.muted }}>{l}</span>
                           <span style={{ fontWeight: 700, color: C.navy, fontFamily: C.mono }}>{v}</span>
@@ -1213,7 +1216,16 @@ export default function ClienteDetalle() {
                 <div>
                   <label style={lbl}>Alícuota principal</label>
                   <select value={form.alicuota ?? 21} onChange={e => updateForm('alicuota', e.target.value)} style={inp}>
-                    {[21, 10.5, 27, 0].map(a => <option key={a} value={a}>{a}%</option>)}
+                    {isVentasModal ? (<>
+                      <option value={21}>Alícuota general (21%)</option>
+                      <option value={10.5}>Alícuota reducida (10,5%)</option>
+                      <option value={0}>Exento / Monotributo</option>
+                    </>) : (<>
+                      <option value={27}>Alícuota incrementada (27%)</option>
+                      <option value={21}>Alícuota general (21%)</option>
+                      <option value={10.5}>Alícuota reducida (10,5%)</option>
+                      <option value={0}>Exento / Monotributo</option>
+                    </>)}
                   </select>
                 </div>
                 <div>
